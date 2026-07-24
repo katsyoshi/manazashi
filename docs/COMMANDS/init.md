@@ -1,10 +1,12 @@
 # `init` command
 
+## Purpose
+
 `code-index init` initializes a Git repository for later indexing. It creates
 the project configuration and, when absent, an empty index database. It does
 not index source files; the first content load is `code-index update`.
 
-## Interface
+## Usage
 
 ```text
 code-index init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]
@@ -21,6 +23,8 @@ code-index init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]
   normalized path is written as an active `db` setting.
 - Without `--db`, the generated configuration does not set `db`, and the
   normal cache database path is used.
+- `--format` defaults to `text`.
+- More than one positional root is rejected.
 
 The generated configuration is intentionally small:
 
@@ -65,8 +69,32 @@ Text output reports `root`, `config`, `config_created`, `config_replaced`,
 }
 ```
 
+`operation`, `root`, `config`, `db`, and `next_command` are strings.
+`config_created`, `config_replaced`, and `db_created` are booleans.
+
 `init` does not stage files, modify `.gitignore`, prompt interactively, or
 select partial index components.
+
+## Errors
+
+Missing `sqlite3`, a non-Git root, invalid or escaping `--db`, an existing
+configuration without `--force`, lock acquisition failure, or database/config
+write failure is an error. If database creation fails after configuration was
+written, the configuration rollback described above is attempted.
+
+## Examples
+
+```sh
+code-index init
+code-index init --db .code-index/index.sqlite /path/to/repo
+code-index init --force --format json
+```
+
+## Related commands
+
+Run `update` next to load content. Use `rebuild` to replace an existing index
+from current Git-tracked files and `path` to inspect default database
+resolution.
 
 ## Open Questions
 

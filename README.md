@@ -86,6 +86,9 @@ Host-specific metadata can live under `skills/code-index/agents/`; agents that d
 
 ## Usage
 
+See the [command reference index](docs/README.md#command-references) for the
+complete interface, output fields, errors, and edge cases of every subcommand.
+
 Run commands from anywhere inside a Git work tree to use its repository root automatically:
 
 ```sh

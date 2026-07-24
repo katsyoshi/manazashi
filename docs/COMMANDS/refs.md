@@ -9,7 +9,7 @@ The command is a lightweight navigation aid. It does not resolve names to a
 specific definition and does not build a reference, call, inheritance, or type
 graph.
 
-## Command interface
+## Usage
 
 ```text
 code-index refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
@@ -35,6 +35,10 @@ code-index refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
 
 No results is a successful query. Text output shows empty sections and JSON
 uses empty arrays.
+
+Invalid/missing `NAME`, non-positive `--limit`, an empty `--kind`, extra
+positional arguments, invalid database/configuration, or unsupported format is
+an error.
 
 ## Matching contract
 
@@ -89,19 +93,18 @@ constant, or arbitrary statements is not reclassified as any of those kinds.
 `refs --kind macro NAME` searches occurrences of the macro name; it does not
 run a preprocessor or infer symbols created by expansion.
 
-Metaprogramming is stored separately from macro symbols. An explicitly defined
-macro is a symbol with `symbols.kind = macro`. A metaprogramming construct that
-cannot be treated as a normal static definition is a signal with
-`signals.kind = metaprogramming`.
+Metaprogramming is conceptually separate from macro symbols. An explicitly
+defined macro is a symbol with `symbols.kind = macro`. A metaprogramming
+construct that cannot be treated as a normal static definition may eventually
+be represented as a signal such as `signals.kind = metaprogramming`.
 
 ```text
 symbols.kind = macro
 signals.kind = metaprogramming
 ```
 
-These values are not collapsed into a stored `macro_or_metaprogramming` kind.
-Human-facing output may group macros and metaprogramming signals when useful,
-but their stored representations remain distinct.
+No `signals` table exists today. These concepts must not be collapsed into a
+stored `macro_or_metaprogramming` symbol kind if signals are implemented.
 
 Language-specific metaprogramming details are outside this command design and
 should be defined when support for a language is implemented. For example,
@@ -173,7 +176,7 @@ is stable by path, line, column, and name.
 When no kind filter is supplied, `query.kinds` is an empty array. An empty
 array means all kinds; it is distinct from an unknown or unavailable value.
 
-## Relationship to other commands
+## Related commands
 
 - `defs NAME` discovers definitions and may remain broader or fuzzier than
   `refs`.
@@ -181,6 +184,14 @@ array means all kinds; it is distinct from an unknown or unavailable value.
 - `show PATH --line N` retrieves context around a selected candidate.
 - `sql` and FTS remain available for substring and custom searches such as
   finding `fileList` or `ArrayList` from the text `List`.
+
+## Examples
+
+```sh
+code-index refs UserRepository
+code-index refs --kind class --language ruby UserRepository
+code-index refs --ignore-case --limit 20 --format json run_task
+```
 
 ## Non-goals
 

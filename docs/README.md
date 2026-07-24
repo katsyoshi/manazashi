@@ -6,8 +6,34 @@ documents.
 
 ## Command references
 
+Setup and mutation:
+
 - [`init`](COMMANDS/init.md)
+- [`rebuild`](COMMANDS/rebuild.md)
+- [`update`](COMMANDS/update.md)
+
+Navigation and composition:
+
+- [`defs`](COMMANDS/defs.md)
+- [`outline`](COMMANDS/outline.md)
 - [`refs`](COMMANDS/refs.md)
+- [`files`](COMMANDS/files.md)
+- [`show`](COMMANDS/show.md)
+- [`sql`](COMMANDS/sql.md)
+
+Inspection:
+
+- [`status`](COMMANDS/status.md)
+- [`stats`](COMMANDS/stats.md)
+- [`metrics`](COMMANDS/metrics.md)
+- [`schema`](COMMANDS/schema.md)
+- [`logs`](COMMANDS/logs.md)
+
+Utilities:
+
+- [`help`](COMMANDS/help.md)
+- [`version`](COMMANDS/version.md)
+- [`path`](COMMANDS/path.md)
 
 Command references describe a subcommand's public interface, matching rules,
 output, and non-goals.
