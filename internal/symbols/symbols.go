@@ -194,6 +194,9 @@ func buildSymbol(path, language, kind, name string, line, column int, signature 
 }
 
 func symbolContext(lines []string, line int) string {
+	if line < 1 || line > len(lines) {
+		return ""
+	}
 	start := line - 3
 	if start < 0 {
 		start = 0

@@ -50,6 +50,43 @@ func stillIndexed() {
 	assertSymbol(t, symbols, "function", "stillIndexed", 3)
 }
 
+func TestExtractGoSymbolsUsesPhysicalPositions(t *testing.T) {
+	source := `package sample
+
+func before() {}
+
+//line generated.go:999999
+func after() {
+}
+`
+	symbols := Extract("sample.go", "go", splitLines(source))
+
+	assertSymbol(t, symbols, "function", "before", 3)
+	assertSymbol(t, symbols, "function", "after", 6)
+	assertSymbolEndLine(t, symbols, "function", "after", 7)
+	for _, symbol := range symbols {
+		if symbol.Kind == "function" && symbol.Name == "after" {
+			if symbol.Signature != "func after() {" {
+				t.Fatalf("symbol signature = %q, want %q", symbol.Signature, "func after() {")
+			}
+			if !strings.Contains(symbol.Context, "func after()") {
+				t.Fatalf("symbol context = %q, want physical source context", symbol.Context)
+			}
+			return
+		}
+	}
+	t.Fatal("function after not found")
+}
+
+func TestSymbolContextHandlesOutOfRangeLine(t *testing.T) {
+	lines := []string{"first", "second"}
+	for _, line := range []int{-1, 0, 3, 999999} {
+		if context := symbolContext(lines, line); context != "" {
+			t.Fatalf("symbolContext(%d) = %q, want empty context", line, context)
+		}
+	}
+}
+
 func TestRegexRubySymbolsFallback(t *testing.T) {
 	source := `module Sample
   class Worker

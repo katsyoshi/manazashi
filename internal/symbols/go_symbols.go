@@ -29,7 +29,7 @@ func (goSymbolExtractor) extract(path, language string, lines []string) ([]Symbo
 				kind = "method"
 			}
 			symbol := goSymbol(path, language, kind, decl.Name.Name, decl.Name.Pos(), decl.Pos(), decl.Type.End(), fileset, lines)
-			symbol.EndLine = fileset.Position(decl.End()).Line
+			symbol.EndLine = physicalPosition(fileset, decl.End()).Line
 			out = append(out, symbol)
 		case *ast.GenDecl:
 			out = append(out, goGenDeclSymbols(path, language, decl, fileset, lines)...)
@@ -44,7 +44,7 @@ func goGenDeclSymbols(path, language string, decl *ast.GenDecl, fileset *token.F
 		switch spec := spec.(type) {
 		case *ast.TypeSpec:
 			symbol := goSymbol(path, language, "type", spec.Name.Name, spec.Name.Pos(), spec.Pos(), spec.End(), fileset, lines)
-			symbol.EndLine = fileset.Position(spec.End()).Line
+			symbol.EndLine = physicalPosition(fileset, spec.End()).Line
 			out = append(out, symbol)
 		case *ast.ValueSpec:
 			kind := "variable"
@@ -56,7 +56,7 @@ func goGenDeclSymbols(path, language string, decl *ast.GenDecl, fileset *token.F
 					continue
 				}
 				symbol := goSymbol(path, language, kind, name.Name, name.Pos(), spec.Pos(), spec.End(), fileset, lines)
-				symbol.EndLine = fileset.Position(spec.End()).Line
+				symbol.EndLine = physicalPosition(fileset, spec.End()).Line
 				out = append(out, symbol)
 			}
 		}
@@ -65,14 +65,14 @@ func goGenDeclSymbols(path, language string, decl *ast.GenDecl, fileset *token.F
 }
 
 func goSymbol(path, language, kind, name string, namePos, signatureStart, signatureEnd token.Pos, fileset *token.FileSet, lines []string) Symbol {
-	position := fileset.Position(namePos)
+	position := physicalPosition(fileset, namePos)
 	signature := goSignature(fileset, signatureStart, signatureEnd, lines)
 	return buildSymbol(path, language, kind, name, position.Line, position.Column, signature, lines)
 }
 
 func goSignature(fileset *token.FileSet, start, end token.Pos, lines []string) string {
-	startLine := fileset.Position(start).Line
-	endLine := fileset.Position(end).Line
+	startLine := physicalPosition(fileset, start).Line
+	endLine := physicalPosition(fileset, end).Line
 	if startLine < 1 {
 		startLine = 1
 	}
@@ -90,4 +90,8 @@ func goSignature(fileset *token.FileSet, start, end token.Pos, lines []string) s
 		endLine = startLine + maxSignatureLines - 1
 	}
 	return strings.Join(lines[startLine-1:endLine], "\n")
+}
+
+func physicalPosition(fileset *token.FileSet, pos token.Pos) token.Position {
+	return fileset.PositionFor(pos, false)
 }
