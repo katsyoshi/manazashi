@@ -25,6 +25,10 @@ be committed. Machine-specific paths and commands can be kept in
 - Keep the index rebuildable and local.
 - Treat Markdown as documentation or notes, not as the index database.
 
+The [documentation index](docs/README.md) links detailed command references and
+the implemented architecture, lifecycle, configuration, storage, symbol, and
+CLI contracts. Deferred decisions are explicitly marked as open questions.
+
 ## Install
 
 `code-index` requires `git`, the `sqlite3` command, and Go for installation.
@@ -149,7 +153,7 @@ index source files; run `code-index update` next. `--db` accepts a
 repository-relative path and stores it in the generated configuration.
 Existing configuration is preserved unless `--force` is given, while an
 existing database is always preserved. See
-[`docs/DESIGNS/init.md`](docs/DESIGNS/init.md) for the complete contract.
+[`docs/COMMANDS/init.md`](docs/COMMANDS/init.md) for the complete contract.
 
 For `init`, `rebuild`, and `update`, the JSON format emits one operation-result
 object with native values. If `rebuild` or `update` skips because another index
@@ -233,7 +237,7 @@ definitions reported with the candidates, and `--limit` controls candidate
 count. Use `outline` to inspect structure and `show` to read context around a
 selected candidate. Results remain candidates rather than a resolved call or
 reference graph.
-See [`docs/DESIGNS/refs.md`](docs/DESIGNS/refs.md) for the full contract.
+See [`docs/COMMANDS/refs.md`](docs/COMMANDS/refs.md) for the full contract.
 
 Find files:
 
@@ -387,6 +391,9 @@ Main tables:
 - `lines`: indexed source lines
 - `file_metrics`: per-file line, blank line, comment line, code line, and symbol counts
 - `files_fts` and `symbols_fts`: FTS5 tables when the installed `sqlite3` supports FTS5
+
+See the [storage design](docs/DESIGNS/storage.md) for table responsibilities,
+build identity, schema evolution, and data-sensitivity requirements.
 
 ## Notes
 

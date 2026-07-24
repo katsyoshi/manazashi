@@ -1,4 +1,4 @@
-# `init` Design
+# `init` command
 
 `code-index init` initializes a Git repository for later indexing. It creates
 the project configuration and, when absent, an empty index database. It does
@@ -67,3 +67,10 @@ Text output reports `root`, `config`, `config_created`, `config_replaced`,
 
 `init` does not stage files, modify `.gitignore`, prompt interactively, or
 select partial index components.
+
+## Open Questions
+
+- Whether lock conflicts should eventually use the same successful-skip
+  contract as `rebuild` and `update`; `init` currently returns an error.
+- Whether future configuration fields should be added to the minimal generated
+  template or remain discoverable only through documentation.

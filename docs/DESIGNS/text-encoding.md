@@ -154,9 +154,9 @@ view. `--status skipped` returns encoding-skipped files and their reasons, while
 An encoding skip is distinct from a file exceeding `max_bytes` or being binary,
 even if all three cases omit source text from the index.
 
-## Initial implementation scope
+## Implemented scope
 
-The first implementation should include:
+The current implementation includes:
 
 - valid UTF-8, with optional BOM removal
 - BOM-marked UTF-16LE, UTF-16BE, UTF-32LE, and UTF-32BE decoded internally
@@ -167,6 +167,14 @@ The first implementation should include:
 - lossless skipping and diagnostics for unknown or failed encodings
 
 Project path rules, `nkf`, and heuristic encoding detection are deferred.
+
+## Open Questions
+
+- Whether a concrete repository needs path-specific encoding policy strongly
+  enough to justify configuration and compatibility complexity.
+- Whether an optional detector such as `nkf` can provide useful diagnostics
+  without becoming an implicit or nondeterministic decoding fallback.
+- Which additional language-level encoding declarations are worth supporting.
 
 ## Non-goals
 

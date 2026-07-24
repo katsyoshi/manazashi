@@ -1,4 +1,4 @@
-# `refs` command design
+# `refs` command
 
 ## Purpose
 
@@ -199,7 +199,7 @@ array means all kinds; it is distinct from an unknown or unavailable value.
   reference counts
 - Replacing a language server
 
-## Implementation questions
+## Open Questions
 
 The command interface does not require a particular storage design. Any future
 addition of structural context should be based on demonstrated navigation
