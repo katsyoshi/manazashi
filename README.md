@@ -29,6 +29,9 @@ The [documentation index](docs/README.md) links detailed command references and
 the implemented architecture, lifecycle, configuration, storage, symbol, and
 CLI contracts. Deferred decisions are explicitly marked as open questions.
 
+See the [reference benchmarks](docs/benchmark.md) for point-in-time measurements
+against real-world repositories.
+
 ## Install
 
 `code-index` requires `git`, the `sqlite3` command, and Go for installation.

@@ -4,6 +4,11 @@ The repository `README.md` is the installation and basic usage guide. This
 directory provides detailed command references and cross-cutting design
 documents.
 
+## Benchmarks
+
+- [Reference benchmarks](benchmark.md): point-in-time measurements against
+  real-world repositories
+
 ## Command references
 
 Setup and mutation:
