@@ -73,10 +73,12 @@ export CODE_INDEX_CACHE_DIR="${CODE_INDEX_CACHE_DIR:-/tmp/code-index}"
 "$TOOL" update -v --format json
 ```
 
-If `update` reports that the index does not exist yet, run `rebuild` explicitly:
+For a repository that has not been initialized, create the project
+configuration and empty database, then load its content:
 
 ```bash
-"$TOOL" rebuild --format json
+"$TOOL" init --format json
+"$TOOL" update --format json
 ```
 
 If `update` reports incompatible schema, file source, hash, or indexing config settings, run `rebuild`. If it reports another checkout path or unknown Git history, run `rebuild` unless the user explicitly wants this DB to belong to the current checkout; only then use `update --adopt`.
@@ -141,7 +143,7 @@ Common commands:
 # Show build information for compatibility checks.
 "$TOOL" version --format json
 
-# Initialize an empty schema when explicitly needed.
+# Create .code-index.toml and an empty schema; run update next.
 "$TOOL" init --format json
 
 # Atomic full rebuild from Git-tracked files. Current CLI skips successfully if another operation holds the lock.
@@ -196,4 +198,4 @@ Use `logs --format json` when diagnosing a failed or skipped `init`, `rebuild`, 
 
 ## References
 
-Read `references/query-patterns.md` when raw SQL is needed, when the built-in `defs`, `refs`, or `files` commands are not enough, or when adapting this workflow to another code index. `refs --format json` returns one object with `query`, `definitions`, and `candidates`; candidate rows include lexical `scope` when symbol ranges are available.
+Read `references/query-patterns.md` when raw SQL is needed, when the built-in `defs`, `refs`, or `files` commands are not enough, or when adapting this workflow to another code index. `refs --format json` returns one object with `query`, `definitions`, and lexical `candidates`. Use `outline` for file structure and `show` for context around a selected candidate.

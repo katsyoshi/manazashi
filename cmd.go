@@ -31,7 +31,7 @@ var commands = []command{
 	{name: "help", usage: "code-index help [--format text|json] [COMMAND]", summary: "show command help"},
 	{name: "version", usage: "code-index version [--format text|json]", summary: "show build and schema information"},
 	{name: "path", usage: "code-index path [--format text|json] [ROOT]", summary: "print the resolved database path"},
-	{name: "init", usage: "code-index init [--db DB] [--format text|json] [ROOT]", summary: "initialize an empty index database"},
+	{name: "init", usage: "code-index init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]", summary: "initialize project config and an empty index"},
 	{name: "rebuild", usage: "code-index rebuild [--db DB] [--max-bytes N] [-v|--verbose] [--format text|json] [ROOT]", summary: "atomically rebuild the full index"},
 	{name: "update", usage: "code-index update [--db DB] [--max-bytes N] [--adopt] [-v|--verbose] [--format text|json] [ROOT]", summary: "create or incrementally refresh the index"},
 	{name: "defs", usage: "code-index defs [--root ROOT|--db DB] [--kind KIND] [--language LANG] [--list] [--format text|json] [QUERY]", summary: "list or find symbol definitions"},

@@ -32,18 +32,11 @@ type refsQueryJSON struct {
 	Limit         int      `json:"limit"`
 }
 
-type refsScopeJSON struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
-	Line int    `json:"line"`
-}
-
 type refsCandidateJSON struct {
-	Path     string          `json:"path"`
-	Line     int             `json:"line"`
-	Language *string         `json:"language"`
-	Text     string          `json:"text"`
-	Scope    []refsScopeJSON `json:"scope"`
+	Path     string  `json:"path"`
+	Line     int     `json:"line"`
+	Language *string `json:"language"`
+	Text     string  `json:"text"`
 }
 
 type refsJSONResult struct {
@@ -57,14 +50,6 @@ type refsRawCandidate struct {
 	Line     int     `json:"line"`
 	Language *string `json:"language"`
 	Text     string  `json:"text"`
-}
-
-type refsScopeRow struct {
-	Path    string `json:"path"`
-	Line    int    `json:"line"`
-	EndLine int    `json:"end_line"`
-	Kind    string `json:"kind"`
-	Name    string `json:"name"`
 }
 
 func cmdRefs(args []string) error {
@@ -132,9 +117,6 @@ func loadRefsResult(db, name string, kinds []string, language string, caseSensit
 	if err != nil {
 		return result, err
 	}
-	if err := attachReferenceScopes(db, candidates); err != nil {
-		return result, err
-	}
 	result.Candidates = candidates
 	return result, nil
 }
@@ -192,7 +174,6 @@ func loadReferenceCandidates(db, name, language string, caseSensitive bool, limi
 				Line:     row.Line,
 				Language: row.Language,
 				Text:     row.Text,
-				Scope:    make([]refsScopeJSON, 0),
 			})
 			if len(result) == limit {
 				break
@@ -203,37 +184,6 @@ func loadReferenceCandidates(db, name, language string, caseSensitive bool, limi
 		}
 	}
 	return result, nil
-}
-
-func attachReferenceScopes(db string, candidates []refsCandidateJSON) error {
-	paths := make([]string, 0)
-	seen := map[string]bool{}
-	for _, candidate := range candidates {
-		if !seen[candidate.Path] {
-			seen[candidate.Path] = true
-			paths = append(paths, candidate.Path)
-		}
-	}
-	if len(paths) == 0 {
-		return nil
-	}
-	quotedPaths := make([]string, len(paths))
-	for i, path := range paths {
-		quotedPaths[i] = quote(path)
-	}
-	sql := "select path, line, end_line, kind, name from symbols where end_line > line and path in (" + strings.Join(quotedPaths, ",") + ") order by path, line, end_line desc, column, name"
-	rows := make([]refsScopeRow, 0)
-	if err := sqliteJSONQuery(db, sql, &rows); err != nil {
-		return err
-	}
-	for i := range candidates {
-		for _, row := range rows {
-			if row.Path == candidates[i].Path && row.Line <= candidates[i].Line && row.EndLine >= candidates[i].Line && isScopeKind(row.Kind) {
-				candidates[i].Scope = append(candidates[i].Scope, refsScopeJSON{Kind: row.Kind, Name: row.Name, Line: row.Line})
-			}
-		}
-	}
-	return nil
 }
 
 func containsIdentifier(line, name string, caseSensitive bool) bool {
@@ -276,15 +226,6 @@ func isASCII(value string) bool {
 	return true
 }
 
-func isScopeKind(kind string) bool {
-	switch kind {
-	case "module", "class", "type", "interface", "trait", "enum", "method", "function":
-		return true
-	default:
-		return false
-	}
-}
-
 func containsString(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
@@ -325,13 +266,6 @@ func writeRefsText(result refsJSONResult) {
 			}
 			currentPath = candidate.Path
 			fmt.Printf("  %s\n", candidate.Path)
-		}
-		if len(candidate.Scope) > 0 {
-			parts := make([]string, len(candidate.Scope))
-			for i, scope := range candidate.Scope {
-				parts[i] = scope.Kind + " " + scope.Name
-			}
-			fmt.Printf("    [%s]\n", strings.Join(parts, " > "))
 		}
 		fmt.Printf("      %d  %s\n", candidate.Line, strings.TrimSpace(candidate.Text))
 	}

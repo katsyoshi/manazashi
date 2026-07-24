@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -31,6 +32,16 @@ func initGitRepo(t *testing.T, root string, paths ...string) {
 	if len(paths) > 0 {
 		args := append([]string{"add"}, paths...)
 		runGit(t, root, args...)
+	}
+}
+
+func createTestIndex(t *testing.T, db, root string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(db), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := createEmptyIndexDB(db, root, "init", hasFTS5(), defaultBuildConfig()); err != nil {
+		t.Fatal(err)
 	}
 }
 

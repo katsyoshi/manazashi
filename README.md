@@ -135,16 +135,27 @@ contract.
 
 `rebuild` requires a Git work tree and indexes files reported by `git ls-files`. If another `init`, `rebuild`, or `update` is already running for the same database, `rebuild` skips and exits successfully.
 
-Initialize an empty index database:
+Initialize a Git project for indexing:
 
 ```sh
 ./code-index init /path/to/repo
+./code-index init --db .code-index/index.sqlite /path/to/repo
 ./code-index init --format json /path/to/repo
 ```
 
-`init` creates the schema and metadata only. It fails if the index database already exists.
+`init` creates `.code-index.toml` at the Git repository root and creates an
+empty schema/metadata database when one does not already exist. It does not
+index source files; run `code-index update` next. `--db` accepts a
+repository-relative path and stores it in the generated configuration.
+Existing configuration is preserved unless `--force` is given, while an
+existing database is always preserved. See
+[`docs/DESIGNS/init.md`](docs/DESIGNS/init.md) for the complete contract.
 
-For `init`, `rebuild`, and `update`, the JSON format emits one operation-result object with native counts and booleans. If `rebuild` or `update` skips because another index operation holds the lock, it exits successfully with `skipped: true`, `reason: "locked"`, and unavailable result fields set to `null`; the warning remains on stderr.
+For `init`, `rebuild`, and `update`, the JSON format emits one operation-result
+object with native values. If `rebuild` or `update` skips because another index
+operation holds the lock, it exits successfully with `skipped: true`,
+`reason: "locked"`, and unavailable result fields set to `null`; the warning
+remains on stderr.
 
 Show index status:
 
@@ -166,7 +177,14 @@ Show recent build operation logs:
 ./code-index logs --limit 50 --format json
 ```
 
-`init`, `rebuild`, and `update` record `succeeded`, `failed`, and lock-related `skipped` runs after root and database resolution succeeds. Logs are stored outside the replaceable index DB in a SQLite sidecar named `<index-db>.logs.sqlite`, so a failed atomic rebuild can still be recorded. The newest 1,000 runs are retained. Logging failures are warnings and do not change the index operation result. The JSON result is an array ordered newest first; an absent sidecar returns `[]`.
+Database-creating `init` operations and all `rebuild` and `update` operations
+record `succeeded`, `failed`, and lock-related `skipped` runs after root and
+database resolution succeeds. Config-only `init --force` operations against an
+existing database are not logged. Logs are stored outside the replaceable
+index DB in a SQLite sidecar named `<index-db>.logs.sqlite`, so a failed atomic
+rebuild can still be recorded. The newest 1,000 runs are retained. Logging
+failures are warnings and do not change the index operation result. The JSON
+result is an array ordered newest first; an absent sidecar returns `[]`.
 
 Show command help:
 
@@ -212,8 +230,9 @@ case sensitivity by default; `--ignore-case` changes only case handling and
 does not enable substring matches. Exact definition lines are excluded while
 comments and strings remain searchable. `--kind` may be repeated to filter the
 definitions reported with the candidates, and `--limit` controls candidate
-count. Results include enclosing lexical scope when the indexer knows symbol
-ranges, but remain candidates rather than a resolved call or reference graph.
+count. Use `outline` to inspect structure and `show` to read context around a
+selected candidate. Results remain candidates rather than a resolved call or
+reference graph.
 See [`docs/DESIGNS/refs.md`](docs/DESIGNS/refs.md) for the full contract.
 
 Find files:

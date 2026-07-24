@@ -8,7 +8,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 )
+
+type initJSONResult struct {
+	Operation      string `json:"operation"`
+	Root           string `json:"root"`
+	Config         string `json:"config"`
+	ConfigCreated  bool   `json:"config_created"`
+	ConfigReplaced bool   `json:"config_replaced"`
+	DB             string `json:"db"`
+	DBCreated      bool   `json:"db_created"`
+	NextCommand    string `json:"next_command"`
+}
 
 type fullBuildJSONResult struct {
 	Operation            string               `json:"operation"`
@@ -56,7 +68,8 @@ type encodingDiagnostic struct {
 
 func cmdInit(args []string) (resultErr error) {
 	flags := flag.NewFlagSet("init", flag.ExitOnError)
-	dbPath := flags.String("db", "", "database path")
+	dbPath := flags.String("db", "", "repository-relative database path")
+	force := flags.Bool("force", false, "replace an existing project configuration")
 	formatFlag := flags.String("format", "text", "output format: text or json")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -75,64 +88,170 @@ func cmdInit(args []string) (resultErr error) {
 	if flags.NArg() == 1 {
 		rootOption = flags.Arg(0)
 	}
-	root, err := resolveRootOrCurrent(rootOption)
+	root, err := resolveGitRoot(rootOption)
 	if err != nil {
 		return err
 	}
-	config, err := resolveConfig(root)
+	configPath := filepath.Join(root, projectConfigName)
+	oldConfig, oldMode, configExists, err := readExistingConfig(configPath)
 	if err != nil {
 		return err
 	}
-	db := *dbPath
-	if db == "" {
-		db = config.db
-		if db == "" {
-			db = defaultDBPath(root)
+	if configExists && !*force {
+		return fmt.Errorf("config already exists: %s; use --force to replace it", configPath)
+	}
+
+	db := defaultDBPath(root)
+	configDB := ""
+	if *dbPath != "" {
+		db, err = resolveProjectDB(root, *dbPath)
+		if err != nil {
+			return fmt.Errorf("invalid --db: %w", err)
+		}
+		configDB, err = filepath.Rel(root, db)
+		if err != nil {
+			return err
+		}
+		configDB = filepath.ToSlash(configDB)
+	}
+	configContents := initConfigContents(configDB)
+	if err := writeFileAtomically(configPath, configContents, 0o644); err != nil {
+		return err
+	}
+	rollbackConfig := func() {
+		if configExists {
+			if rollbackErr := writeFileAtomically(configPath, oldConfig, oldMode); rollbackErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: restore config %s: %v\n", configPath, rollbackErr)
+			}
+			return
+		}
+		if rollbackErr := os.Remove(configPath); rollbackErr != nil && !errors.Is(rollbackErr, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "warning: remove config %s: %v\n", configPath, rollbackErr)
 		}
 	}
-	recorder := beginBuildRun("init", db, root)
-	defer recorder.finish(&resultErr)
-	if err := ensureIndexDoesNotExist(db); err != nil {
-		return err
+
+	dbCreated := false
+	if _, statErr := os.Stat(db); errors.Is(statErr, os.ErrNotExist) {
+		recorder := beginBuildRun("init", db, root)
+		defer recorder.finish(&resultErr)
+		if err := os.MkdirAll(filepath.Dir(db), 0o755); err != nil {
+			rollbackConfig()
+			return err
+		}
+		lock, err := acquireIndexLock(db, "init", root)
+		if err != nil {
+			rollbackConfig()
+			return err
+		}
+		defer lock.release()
+		if _, err := os.Stat(db); errors.Is(err, os.ErrNotExist) {
+			if err := createEmptyIndexDB(db, root, "init", hasFTS5(), defaultBuildConfig()); err != nil {
+				rollbackConfig()
+				return err
+			}
+			dbCreated = true
+		} else if err != nil {
+			rollbackConfig()
+			return err
+		}
+	} else if statErr != nil {
+		rollbackConfig()
+		return statErr
 	}
-	if err := os.MkdirAll(filepath.Dir(db), 0o755); err != nil {
-		return err
+
+	result := initJSONResult{
+		Operation:      "init",
+		Root:           root,
+		Config:         configPath,
+		ConfigCreated:  !configExists,
+		ConfigReplaced: configExists,
+		DB:             db,
+		DBCreated:      dbCreated,
+		NextCommand:    "code-index update",
 	}
-	lock, err := acquireIndexLock(db, "init", root)
-	if err != nil {
-		return err
-	}
-	defer lock.release()
-	if err := ensureIndexDoesNotExist(db); err != nil {
-		return err
-	}
-	fts := hasFTS5()
-	if err := createEmptyIndexDB(db, root, "init", fts, config.build); err != nil {
-		return err
-	}
-	result := successfulFullBuildResult("init", db, root, 0, 0, 0, 0, 0, 0, 0, 0, fts, nil)
 	if format == outputFormatJSON {
 		return writeJSON(os.Stdout, result)
 	}
-	fmt.Printf("db: %s\n", db)
 	fmt.Printf("root: %s\n", root)
-	fmt.Printf("files: 0\n")
-	fmt.Printf("symbols: 0\n")
-	fmt.Printf("lines: 0\n")
-	fmt.Printf("code_lines: 0\n")
-	fmt.Printf("comment_lines: 0\n")
-	fmt.Printf("blank_lines: 0\n")
-	fmt.Printf("transcoded_files: 0\n")
-	fmt.Printf("encoding_skipped_files: 0\n")
-	fmt.Printf("hash_algorithm: %s\n", contentHashAlgorithm)
-	fmt.Printf("fts5: %s\n", yesNo(fts))
+	fmt.Printf("config: %s\n", configPath)
+	fmt.Printf("config_created: %t\n", result.ConfigCreated)
+	fmt.Printf("config_replaced: %t\n", result.ConfigReplaced)
+	fmt.Printf("db: %s\n", db)
+	fmt.Printf("db_created: %t\n", result.DBCreated)
+	fmt.Printf("next: %s\n", result.NextCommand)
 	return nil
 }
 
-func ensureIndexDoesNotExist(db string) error {
-	if _, err := os.Stat(db); err == nil {
-		return fmt.Errorf("index already exists: %s; run rebuild to replace it", db)
-	} else if !errors.Is(err, os.ErrNotExist) {
+func resolveGitRoot(path string) (string, error) {
+	start := path
+	if start == "" {
+		var err error
+		start, err = os.Getwd()
+		if err != nil {
+			return "", err
+		}
+	}
+	start, err := resolveRoot(start)
+	if err != nil {
+		return "", err
+	}
+	root, err := gitOutput(start, "rev-parse", "--show-toplevel")
+	if err != nil || root == "" {
+		return "", fmt.Errorf("not a Git work tree: %s", start)
+	}
+	return resolveRoot(root)
+}
+
+func initConfigContents(db string) []byte {
+	prefix := ""
+	if db != "" {
+		prefix = "db = " + strconv.Quote(db) + "\n\n"
+	}
+	return []byte(prefix +
+		"# max_bytes = 1000000\n" +
+		"# ignore_dirs = [\"generated\", \"scratch\"]\n" +
+		"# db = \".code-index/index.sqlite\"\n\n" +
+		"[encoding]\n" +
+		"fallbacks = []\n")
+}
+
+func readExistingConfig(path string) ([]byte, fs.FileMode, bool, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, 0, false, nil
+	}
+	if err != nil {
+		return nil, 0, false, err
+	}
+	if info.IsDir() {
+		return nil, 0, false, fmt.Errorf("config is a directory: %s", path)
+	}
+	data, err := os.ReadFile(path)
+	return data, info.Mode().Perm(), true, err
+}
+
+func writeFileAtomically(path string, contents []byte, mode fs.FileMode) (resultErr error) {
+	file, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpPath := file.Name()
+	defer func() {
+		_ = file.Close()
+		if resultErr != nil {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if _, err := file.Write(contents); err != nil {
+		return err
+	}
+	if err := file.Chmod(mode); err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
 		return err
 	}
 	return nil

@@ -97,8 +97,9 @@ func TestInitRecordsBuildRun(t *testing.T) {
 		t.Skip("sqlite3 command not found")
 	}
 	root := t.TempDir()
-	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"init", "--db", db, root}); err != nil {
+	initGitRepo(t, root)
+	db := filepath.Join(root, ".code-index", "index.sqlite")
+	if err := run([]string{"init", "--db", ".code-index/index.sqlite", root}); err != nil {
 		t.Fatal(err)
 	}
 	runs, err := loadBuildRuns(db, 10)

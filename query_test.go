@@ -21,9 +21,7 @@ func TestStatsCommandJSONOutputUsesNativeTypesAndNulls(t *testing.T) {
 	}
 	root := t.TempDir()
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"init", "--db", db, root}); err != nil {
-		t.Fatal(err)
-	}
+	createTestIndex(t, db, root)
 
 	var result statsJSONResult
 	decodeRunJSON(t, []string{"stats", "--db", db, "--format", "json"}, &result)
@@ -81,9 +79,7 @@ func TestSchemaCommandShowsUserTablesAndColumns(t *testing.T) {
 	}
 	root := t.TempDir()
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"init", "--db", db, root}); err != nil {
-		t.Fatal(err)
-	}
+	createTestIndex(t, db, root)
 
 	out := captureRunOutput(t, []string{"schema", "--db", db})
 	for _, want := range []string{
@@ -205,11 +201,12 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 	if len(references.Candidates) != 2 || references.Candidates[0].Line != 3 || references.Candidates[1].Line != 5 || references.Candidates[1].Text != "\tRunTask()" || references.Candidates[1].Language == nil || *references.Candidates[1].Language != "go" {
 		t.Fatalf("refs candidates = %#v", references.Candidates)
 	}
-	if len(references.Candidates[0].Scope) != 0 || len(references.Candidates[1].Scope) != 1 || references.Candidates[1].Scope[0].Kind != "function" || references.Candidates[1].Scope[0].Name != "main" {
-		t.Fatalf("refs scopes = %#v", references.Candidates)
+	refsJSON := captureRunOutput(t, []string{"refs", "--db", db, "--format", "json", "RunTask"})
+	if strings.Contains(refsJSON, `"scope"`) {
+		t.Fatalf("refs JSON includes structural scope: %q", refsJSON)
 	}
 	refsText := captureRunOutput(t, []string{"refs", "--db", db, "RunTask"})
-	if !strings.Contains(refsText, "query: RunTask (kinds: all, case-sensitive)") || !strings.Contains(refsText, "main.go:10  function RunTask") || !strings.Contains(refsText, "[function main]") || !strings.Contains(refsText, "5  RunTask()") {
+	if !strings.Contains(refsText, "query: RunTask (kinds: all, case-sensitive)") || !strings.Contains(refsText, "main.go:10  function RunTask") || !strings.Contains(refsText, "5  RunTask()") || strings.Contains(refsText, "[function main]") {
 		t.Fatalf("refs text = %q", refsText)
 	}
 	var noReferences refsJSONResult
@@ -309,9 +306,7 @@ func TestSQLCommandJSONOutputPreservesDynamicTypes(t *testing.T) {
 	}
 	root := t.TempDir()
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"init", "--db", db, root}); err != nil {
-		t.Fatal(err)
-	}
+	createTestIndex(t, db, root)
 
 	var rows []struct {
 		IntegerValue int64   `json:"integer_value"`

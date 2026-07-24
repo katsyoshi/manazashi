@@ -165,9 +165,7 @@ func TestStatusTreatsIndexedDirtyWorkTreeAsFresh(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"init", "--db", db, root}); err != nil {
-		t.Fatal(err)
-	}
+	createTestIndex(t, db, root)
 	if err := os.WriteFile(path, []byte("package main\n\nfunc dirtyName() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

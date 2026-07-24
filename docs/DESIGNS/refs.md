@@ -108,31 +108,10 @@ should be defined when support for a language is implemented. For example,
 Ruby may record an operation such as `define_method`, but `refs` does not infer
 the generated method as a normal static symbol.
 
-## Lexical scope
-
-Each candidate should include its enclosing lexical hierarchy when available:
-
-```text
-module > class > method
-```
-
-This hierarchy describes where the source line appears. It does not describe
-inheritance, dispatch, or the definition targeted by the occurrence.
-
-Scope nodes are ordered outermost to innermost and contain:
-
-- `kind`
-- `name`
-- `line`, the definition line of the enclosing symbol
-
-When scope cannot be determined, JSON uses an empty `scope` array and text
-output omits the scope annotation.
-
 ## Text output
 
 Text output is optimized for interactive navigation. It separates matching
-definitions from reference candidates and groups candidates by file and
-scope.
+definitions from reference candidates and groups candidates by file.
 
 ```text
 query: List (kinds: class, case-sensitive)
@@ -142,12 +121,10 @@ definitions:
 
 references:
   app/models/item.rb
-    [class Item > method build]
-      12  List.new
+    12  List.new
 
   app/services/load.rb
-    [class Loader > method load]
-      8  parser.call(List)
+    8  parser.call(List)
 ```
 
 If no indexed definition exists, the definitions section remains empty while
@@ -183,11 +160,7 @@ definitions, and candidates remain distinct.
       "path": "app/models/item.java",
       "line": 12,
       "language": "java",
-      "text": "List<Item> items = new ArrayList<>();",
-      "scope": [
-        {"kind": "class", "name": "ItemRepository", "line": 4},
-        {"kind": "method", "name": "load", "line": 10}
-      ]
+      "text": "List<Item> items = new ArrayList<>();"
     }
   ]
 }
@@ -204,9 +177,8 @@ array means all kinds; it is distinct from an unknown or unavailable value.
 
 - `defs NAME` discovers definitions and may remain broader or fuzzier than
   `refs`.
-- `outline PATH` shows the symbols in one file and should eventually use the
-  same lexical hierarchy representation.
-- `show PATH --line N` retrieves source around a selected candidate.
+- `outline PATH` shows definitions and structure in one file.
+- `show PATH --line N` retrieves context around a selected candidate.
 - `sql` and FTS remain available for substring and custom searches such as
   finding `fileList` or `ArrayList` from the text `List`.
 
@@ -223,12 +195,12 @@ array means all kinds; it is distinct from an unknown or unavailable value.
 - Inferring a reference from names such as `fileList` when `List` is absent
 - Classifying comments or string literals separately from other lexical
   candidates
+- Reporting scores, relevance rankings, occurrence statistics, or per-file
+  reference counts
 - Replacing a language server
 
 ## Implementation questions
 
-The command interface does not require a particular storage design. Before
-implementation, decide how to represent lexical containment for both `outline`
-and `refs`. Options include `parent_symbol_id`, `qualified_name`, `end_line`, or
-a separately derived scope table. Any schema change must preserve the
-lightweight, rebuildable index design.
+The command interface does not require a particular storage design. Any future
+addition of structural context should be based on demonstrated navigation
+needs and must preserve the lightweight, rebuildable index design.

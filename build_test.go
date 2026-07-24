@@ -22,10 +22,10 @@ func TestBuildCommandsJSONOutput(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 
-	initDB := filepath.Join(t.TempDir(), "init.sqlite")
-	var initialized fullBuildJSONResult
-	decodeRunJSON(t, []string{"init", "--db", initDB, "--format", "json", root}, &initialized)
-	if initialized.Operation != "init" || initialized.Skipped || initialized.Files == nil || *initialized.Files != 0 || initialized.FTS5 == nil || *initialized.FTS5 != hasFTS5() {
+	initDB := filepath.Join(root, ".code-index", "init.sqlite")
+	var initialized initJSONResult
+	decodeRunJSON(t, []string{"init", "--db", ".code-index/init.sqlite", "--format", "json", root}, &initialized)
+	if initialized.Operation != "init" || initialized.Root != root || initialized.Config != filepath.Join(root, projectConfigName) || !initialized.ConfigCreated || initialized.ConfigReplaced || initialized.DB != initDB || !initialized.DBCreated || initialized.NextCommand != "code-index update" {
 		t.Fatalf("init JSON = %#v", initialized)
 	}
 
@@ -46,7 +46,7 @@ func TestBuildCommandsJSONOutput(t *testing.T) {
 	}
 
 	invalidFormatArgs := [][]string{
-		{"init", "--db", filepath.Join(t.TempDir(), "invalid.sqlite"), "--format", "yaml", root},
+		{"init", "--db", "invalid.sqlite", "--format", "yaml", root},
 		{"rebuild", "--db", filepath.Join(t.TempDir(), "invalid.sqlite"), "--format", "yaml", root},
 		{"update", "--db", db, "--format", "yaml", root},
 	}
@@ -163,25 +163,39 @@ func TestUpdateOutputReportsChangedFileCounts(t *testing.T) {
 	}
 }
 
-func TestInitCommandCreatesEmptySQLiteIndexAndFailsIfExists(t *testing.T) {
+func TestInitCommandCreatesProjectConfigAndPreservesExistingIndex(t *testing.T) {
 	if _, err := exec.LookPath("sqlite3"); err != nil {
 		t.Skip("sqlite3 command not found")
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git command not found")
 	}
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	db := filepath.Join(t.TempDir(), "index.sqlite")
+	initGitRepo(t, root, "main.go")
+	db := filepath.Join(root, ".code-index", "index.sqlite")
 
-	if err := run([]string{"init", "--db", db, root}); err != nil {
-		t.Fatal(err)
+	out := captureRunOutput(t, []string{"init", "--db", ".code-index/index.sqlite", root})
+	for _, want := range []string{"config_created: true", "config_replaced: false", "db_created: true", "next: code-index update"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("init output = %q, want %q", out, want)
+		}
 	}
-	out, err := exec.Command("sqlite3", "-batch", db, "select count(*) from files;").Output()
+	config, err := os.ReadFile(filepath.Join(root, projectConfigName))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.TrimSpace(string(out)) != "0" {
-		t.Fatalf("file count = %q, want 0", out)
+	if !strings.HasPrefix(string(config), "db = \".code-index/index.sqlite\"\n\n") {
+		t.Fatalf("config = %q", config)
+	}
+	sqlOut, err := exec.Command("sqlite3", "-batch", db, "select count(*) from files;").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(sqlOut)) != "0" {
+		t.Fatalf("file count = %q, want 0", sqlOut)
 	}
 	assertMetaValue(t, db, "schema_version", schemaVersion)
 	assertMetaValue(t, db, "file_source", fileSource)
@@ -194,8 +208,22 @@ func TestInitCommandCreatesEmptySQLiteIndexAndFailsIfExists(t *testing.T) {
 	if _, err := os.Stat(indexLockPath(db)); !os.IsNotExist(err) {
 		t.Fatalf("lock file still exists or returned unexpected error: %v", err)
 	}
-	if err := run([]string{"init", "--db", db, root}); err == nil {
-		t.Fatal("second init succeeded, want failure")
+	if err := run([]string{"init", "--db", ".code-index/index.sqlite", root}); err == nil {
+		t.Fatal("init with existing config succeeded without --force")
+	}
+	assertSQLiteValue(t, db, "insert into meta(key, value) values ('preserved', 'yes') returning value;", "yes")
+	var forced initJSONResult
+	decodeRunJSON(t, []string{"init", "--force", "--db", ".code-index/index.sqlite", "--format", "json", root}, &forced)
+	if forced.ConfigCreated || !forced.ConfigReplaced || forced.DBCreated {
+		t.Fatalf("forced init JSON = %#v", forced)
+	}
+	assertMetaValue(t, db, "preserved", "yes")
+	runs, err := loadBuildRuns(db, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runs) != 1 {
+		t.Fatalf("build runs after config-only init = %#v, want one database-creating init", runs)
 	}
 }
 
@@ -366,11 +394,11 @@ func TestUpdateCommandIndexesInitializedDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	initGitRepo(t, root, "main.go")
-	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"init", "--db", db, root}); err != nil {
+	db := filepath.Join(root, ".code-index", "index.sqlite")
+	if err := run([]string{"init", "--db", ".code-index/index.sqlite", root}); err != nil {
 		t.Fatal(err)
 	}
-	if err := run([]string{"update", "--db", db, root}); err != nil {
+	if err := run([]string{"update", root}); err != nil {
 		t.Fatal(err)
 	}
 	assertSQLiteValue(t, db, "select count(*) from symbols where name = 'main';", "1")
