@@ -49,10 +49,11 @@ mkdir -p "$SKILL_DIR/exec"
 GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/code-index@latest
 ```
 
-Point agents and hooks at the exact binary. `CODE_INDEX_BIN` must be set in the environment used by the agent runtime; `code-index` may be on `PATH` for humans, but the skill does not rely on `PATH`.
+Point agents and hooks at the exact binary. `CODE_INDEX_BIN` must be set in the environment used by the agent runtime; `code-index` may be on `PATH` for humans, but the skill does not rely on `PATH`. In sandboxed agent sessions, also set `CODE_INDEX_CACHE_DIR` to a writable location. Configure these variables through the runtime itself rather than relying on an interactive shell profile, which may not be loaded for each tool invocation.
 
 ```sh
 export CODE_INDEX_BIN="$SKILL_DIR/exec/code-index"
+export CODE_INDEX_CACHE_DIR=/tmp/code-index
 "$CODE_INDEX_BIN" version
 ```
 

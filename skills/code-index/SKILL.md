@@ -20,8 +20,14 @@ SKILL_DIR=/path/to/installed/skills/code-index
 mkdir -p "$SKILL_DIR/exec"
 GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/code-index@latest
 export CODE_INDEX_BIN="$SKILL_DIR/exec/code-index"
+export CODE_INDEX_CACHE_DIR="${CODE_INDEX_CACHE_DIR:-/tmp/code-index}"
 "$CODE_INDEX_BIN" version
 ```
+
+Configure both environment variables in the agent runtime rather than relying
+on an interactive shell profile. A persistent `CODE_INDEX_BIN` avoids repeating
+the absolute binary path, and a persistent writable `CODE_INDEX_CACHE_DIR`
+avoids repeating cache configuration in sandboxed sessions.
 
 For local development of this repository, building the checked-out source with `go build -o "$SKILL_DIR/exec/code-index" .` and pointing `CODE_INDEX_BIN` at that binary is also acceptable.
 
@@ -112,8 +118,12 @@ If `status` is unsupported, continue with query commands and rely on rebuild out
 9. Show source around indexed lines:
 
 ```bash
-"$TOOL" show --line 42 --format json lib/config.rb
+"$TOOL" show --line 42 --context 20 --format json lib/config.rb
 ```
+
+Use a wider `--context` when inspecting a method body so the indexed source can
+remain the primary reading surface. Reduce it for a narrow confirmation or
+increase it when the surrounding control flow is needed.
 
 10. Run `update` after editing tracked files that affect search results. Use `rebuild` after tool upgrades, schema changes, or option changes that should refresh every tracked file.
 
@@ -183,8 +193,8 @@ Common commands:
 # Show index-wide counts and build metadata.
 "$TOOL" stats --format json
 
-# Show source from indexed lines.
-"$TOOL" show --line 42 --format json lib/user_repository.rb
+# Show enough source around an indexed line to inspect a method body.
+"$TOOL" show --line 42 --context 20 --format json lib/user_repository.rb
 ```
 
 Commands run inside a Git work tree discover its repository root automatically. The default database lives under `CODE_INDEX_CACHE_DIR` when set. Otherwise it uses `$XDG_CACHE_HOME/code-index` or `~/.cache/code-index`, keyed by the repository root path. A project `.code-index.toml` may override the database with a repository-relative `db`; pass `--db path/to/index.sqlite` for an explicit one-run override.
