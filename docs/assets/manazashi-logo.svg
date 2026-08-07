@@ -1,6 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 180" role="img" aria-labelledby="title description">
   <title id="title">manazashi</title>
   <desc id="description">The manazashi wordmark with one circular pupil and a wink beside an abstract indexed page crossed by a fine sight line.</desc>
+  <style>
+    path { stroke: #182226; }
+    circle { fill: #182226; }
+    @media (prefers-color-scheme: dark) {
+      path { stroke: #e6edf3; }
+      circle { fill: #e6edf3; }
+    }
+  </style>
 
   <g fill="none" stroke="#182226" stroke-linecap="round" stroke-linejoin="round">
     <path d="M52 38H43c-11 0-19 9-19 20v64c0 11 8 20 19 20h9" stroke-width="7"/>

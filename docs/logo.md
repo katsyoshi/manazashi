@@ -16,7 +16,8 @@ circular pupil, while the second `a` winks.
 
 All variants have a transparent background and use vector paths rather than a
 font, so their letterforms do not depend on the rendering environment. The
-artwork uses `#182226` for its strokes and fills.
+artwork uses `#182226` in light mode and switches to `#e6edf3` when the renderer
+reports a dark color scheme.
 
 ## Usage
 

@@ -1,6 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 180" role="img" aria-labelledby="title description">
   <title id="title">manazashi</title>
   <desc id="description">A quiet lowercase manazashi wordmark with a fine horizontal sight line.</desc>
+  <style>
+    path { stroke: #182226; }
+    circle { fill: #182226; }
+    @media (prefers-color-scheme: dark) {
+      path { stroke: #e6edf3; }
+      circle { fill: #e6edf3; }
+    }
+  </style>
 
   <g fill="none" stroke="#182226" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M40 120V72C40 58 48 50 60 50S80 58 80 72v48V72c0-14 8-22 20-22s20 8 20 22v48"/>
