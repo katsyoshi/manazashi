@@ -9,27 +9,30 @@ description: Build and use a local SQLite index for code navigation instead of a
 
 Use Manazashi as the first search surface for codebase navigation. Prefer SQL-backed queries for locating files, definitions, methods, classes, relevant source lines, metrics, and index status.
 
-Use an external `mzci` binary from an explicit `MANAZASHI_BIN` path. `mzci` may be on `PATH` for humans, but this skill must not search `PATH`. If `MANAZASHI_BIN` is not set, ask the user to install Manazashi and configure `MANAZASHI_BIN` in the environment used by their agent runtime.
+Use only an explicitly selected `mzci` binary. Prefer the absolute path in
+`MANAZASHI_BIN` when it is set; otherwise use `exec/mzci` under the directory
+containing this `SKILL.md`. Never search `PATH`, run a repository-local binary,
+or select any other fallback. If the selected file is missing or not
+executable, stop and ask the user to install or configure Manazashi.
 
 ## Install Guidance
 
-When `MANAZASHI_BIN` is missing or points to a non-executable file, do not search `PATH`. Ask the user to install Manazashi under the directory containing this `SKILL.md`, then configure `MANAZASHI_BIN` in the environment used by their agent runtime:
+The default installation belongs under the installed skill directory:
 
 ```bash
 SKILL_DIR=/path/to/installed/skills/manazashi
 mkdir -p "$SKILL_DIR/exec"
 GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/manazashi/cmd/mzci@latest
-export MANAZASHI_BIN="$SKILL_DIR/exec/mzci"
 export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
-"$MANAZASHI_BIN" version
+"$SKILL_DIR/exec/mzci" version
 ```
 
-Configure both environment variables in the agent runtime rather than relying
-on an interactive shell profile. A persistent `MANAZASHI_BIN` avoids repeating
-the absolute binary path, and a persistent writable `MANAZASHI_CACHE_DIR`
-avoids repeating cache configuration in sandboxed sessions.
+Set `MANAZASHI_BIN` in the agent runtime only to override the bundled binary
+with another trusted executable. A writable `MANAZASHI_CACHE_DIR` avoids
+repeating cache configuration in sandboxed sessions.
 
-For local development of this repository, building the checked-out source with `go build -o "$SKILL_DIR/exec/mzci" ./cmd/mzci` and pointing `MANAZASHI_BIN` at that binary is also acceptable.
+For local development of this repository, building the checked-out source with
+`go build -o "$SKILL_DIR/exec/mzci" ./cmd/mzci` is also acceptable.
 
 The `version` output identifies the binary by build commit when available. Treat the commit hash as an identity, not as an ordered version, unless you have commit-history context.
 
@@ -44,21 +47,18 @@ Read the `Design` section in the repository `README.md` as the source of truth f
 ## Workflow
 
 1. Resolve the target repository root.
-2. Select the tool:
+2. Select the tool using this fixed precedence:
 
-```bash
-if [ -z "${MANAZASHI_BIN:-}" ]; then
-  echo "MANAZASHI_BIN is not set; install Manazashi and set MANAZASHI_BIN to the mzci binary path" >&2
-  exit 1
-fi
+| Condition | Tool |
+| --- | --- |
+| `MANAZASHI_BIN` is set to an absolute path | That exact path |
+| `MANAZASHI_BIN` is set to a relative path | Stop and ask the user to configure an absolute path |
+| `MANAZASHI_BIN` is unset | `exec/mzci` beside this `SKILL.md` |
+| The selected file is missing or not executable | Stop and ask the user to install or configure Manazashi |
 
-TOOL="$MANAZASHI_BIN"
-
-if [ ! -x "$TOOL" ]; then
-  echo "mzci is not executable: $TOOL" >&2
-  exit 1
-fi
-```
+Do not inspect `PATH`, call `command -v` or `which`, or use an executable found
+in the target repository. Set `TOOL` to the selected absolute path for the
+remaining commands.
 
 3. Check the tool build information. Prefer a build commit hash over semver for identifying the binary, but do not infer ordering from the hash without commit history. Treat the hash as compatible only when it is in a known compatible list, or use explicit feature checks when the binary supports them. If the command is unsupported or the build is incompatible for the workflow you need, ask the user to install or configure a compatible `mzci` binary:
 

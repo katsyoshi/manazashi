@@ -6,7 +6,7 @@ It is not intended to replace language servers, VCS indexes, or full code-intell
 
 The binary is written in Go and uses the `sqlite3` command for database creation and queries. The built binary does not require a Go runtime.
 
-The reusable agent skill source lives at `skills/manazashi/SKILL.md`. It is written to be usable by coding agents such as Codex or Claude. Agents should use an explicit `MANAZASHI_BIN` path instead of searching `PATH`, so they do not accidentally run a different `mzci` binary.
+The reusable agent skill source lives at `skills/manazashi/SKILL.md`. It is written to be usable by coding agents such as Codex or Claude. The skill uses its bundled `exec/mzci` by default and accepts `MANAZASHI_BIN` as an explicit override. It never searches `PATH`, so it does not accidentally run a different `mzci` binary.
 
 ## Agent configuration
 
@@ -49,12 +49,16 @@ mkdir -p "$SKILL_DIR/exec"
 GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/manazashi/cmd/mzci@latest
 ```
 
-Point agents and hooks at the exact binary. `MANAZASHI_BIN` must be set in the environment used by the agent runtime; `mzci` may be on `PATH` for humans, but the skill does not rely on `PATH`. In sandboxed agent sessions, also set `MANAZASHI_CACHE_DIR` to a writable location. Configure these variables through the runtime itself rather than relying on an interactive shell profile, which may not be loaded for each tool invocation.
+The skill uses this bundled binary without requiring `MANAZASHI_BIN`. Set
+`MANAZASHI_BIN` in the agent runtime only when the skill should use a different
+trusted executable. The override must be an absolute path naming the executable
+directly; the skill never searches `PATH`. In sandboxed agent sessions, set
+`MANAZASHI_CACHE_DIR` to a writable location through the agent runtime rather
+than relying on an interactive shell profile.
 
 ```sh
-export MANAZASHI_BIN="$SKILL_DIR/exec/mzci"
 export MANAZASHI_CACHE_DIR=/tmp/manazashi
-"$MANAZASHI_BIN" version
+"$SKILL_DIR/exec/mzci" version
 ```
 
 `version` prints the build commit hash when available, plus schema metadata useful for compatibility checks.
@@ -62,18 +66,18 @@ export MANAZASHI_CACHE_DIR=/tmp/manazashi
 For agents and scripts, use JSON output:
 
 ```sh
-"$MANAZASHI_BIN" version --format json
+"$SKILL_DIR/exec/mzci" version --format json
 ```
 
 The JSON format emits one object. `modified` is a boolean and `schema_version` is a number; unavailable build information is `null`.
 
-For local development in this repository, build the checked-out source and point `MANAZASHI_BIN` at that binary:
+For local development in this repository, build the checked-out source into the
+installed skill:
 
 ```sh
 SKILL_DIR=/path/to/installed/skills/manazashi
 mkdir -p "$SKILL_DIR/exec"
 go build -o "$SKILL_DIR/exec/mzci" ./cmd/mzci
-export MANAZASHI_BIN="$SKILL_DIR/exec/mzci"
 ```
 
 For Codex local skill development, you can symlink the checked-in skill into Codex's skill directory first:
@@ -84,7 +88,10 @@ mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
 ln -s "$PWD/skills/manazashi" "$SKILL_DIR"
 ```
 
-If the target already exists, remove or rename it first. For other agent runtimes, set `SKILL_DIR` to that runtime's installed `skills/manazashi` directory and configure `MANAZASHI_BIN` using that runtime's normal environment mechanism.
+If the target already exists, remove or rename it first. For other agent
+runtimes, set `SKILL_DIR` to that runtime's installed `skills/manazashi`
+directory. Configure `MANAZASHI_BIN` through the runtime only when overriding
+the bundled executable.
 
 Host-specific metadata can live under `skills/manazashi/agents/`; agents that do not use those files can ignore them.
 
