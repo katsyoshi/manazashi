@@ -35,7 +35,8 @@ jobs:
 
       - name: Smoke test
         run: |
-          tmpdir="$(mktemp -d)"
+          tmpdir="$(mktemp -d ./.mzci-smoke.XXXXXX)"
+          trap 'rm -rf "$tmpdir" .manazashi.toml' EXIT
           /tmp/mzci-bin init --db "$tmpdir/init.sqlite" .
           /tmp/mzci-bin status --db "$tmpdir/init.sqlite"
           /tmp/mzci-bin stats --db "$tmpdir/init.sqlite"
