@@ -1,5 +1,9 @@
 # manazashi
 
+<p align="center">
+  <img src="docs/assets/manazashi-logo.svg" alt="manazashi" width="720">
+</p>
+
 `manazashi` builds a local SQLite index for source-code navigation. It is intended for LLM and agent workflows that should query code structure through SQL instead of repeatedly using grep-style text search.
 
 It is not intended to replace language servers, VCS indexes, or full code-intelligence systems; it provides a small, local, queryable index that agents can rebuild cheaply.

@@ -4,6 +4,10 @@ The repository `README.md` is the installation and basic usage guide. This
 directory provides detailed command references and cross-cutting design
 documents.
 
+## Logo
+
+- [Logo and variants](logo.md): primary artwork, alternate wordmarks, and usage
+
 ## Benchmarks
 
 - [Reference benchmarks](benchmark.md): point-in-time measurements against
