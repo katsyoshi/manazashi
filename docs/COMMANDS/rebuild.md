@@ -8,7 +8,7 @@ Git-tracked files.
 ## Usage
 
 ```text
-code-index rebuild [--db DB] [--max-bytes N] [--ignore-dir NAME]...
+mzci rebuild [--db DB] [--max-bytes N] [--ignore-dir NAME]...
                    [-v|--verbose] [--format text|json] [ROOT]
 ```
 
@@ -63,9 +63,9 @@ Missing `sqlite3`, invalid options/configuration/root, Git enumeration failure,
 database creation failure, or installation failure is an error.
 
 ```sh
-code-index rebuild
-code-index rebuild --format json /path/to/repo
-code-index rebuild --ignore-dir generated --max-bytes 2000000
+mzci rebuild
+mzci rebuild --format json /path/to/repo
+mzci rebuild --ignore-dir generated --max-bytes 2000000
 ```
 
 ## Related commands

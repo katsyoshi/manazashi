@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"errors"
@@ -167,7 +167,7 @@ func cmdInit(args []string) (resultErr error) {
 		ConfigReplaced: configExists,
 		DB:             db,
 		DBCreated:      dbCreated,
-		NextCommand:    "code-index update",
+		NextCommand:    "mzci update",
 	}
 	if format == outputFormatJSON {
 		return writeJSON(os.Stdout, result)
@@ -210,7 +210,7 @@ func initConfigContents(db string) []byte {
 	return []byte(prefix +
 		"# max_bytes = 1000000\n" +
 		"# ignore_dirs = [\"generated\", \"scratch\"]\n" +
-		"# db = \".code-index/index.sqlite\"\n\n" +
+		"# db = \".manazashi/index.sqlite\"\n\n" +
 		"[encoding]\n" +
 		"fallbacks = []\n")
 }

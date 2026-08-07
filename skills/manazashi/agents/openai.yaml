@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manazashi"
+  short_description: "Navigate code with a local SQLite index"
+  default_prompt: "Use $manazashi to index this codebase and navigate files, symbols, metrics, and source lines."

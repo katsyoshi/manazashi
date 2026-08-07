@@ -57,6 +57,8 @@ output, and non-goals.
   `defs`, `outline`, and `refs`
 - [CLI contract](DESIGNS/cli.md): output formats, errors, stable results, and command
   families
+- [Project and CLI naming](DESIGNS/naming.md): public names, package layout, and
+  migration policy
 - [Source text encoding](DESIGNS/text-encoding.md)
 
 The main body of each document describes the current implementation. An

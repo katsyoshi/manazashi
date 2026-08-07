@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"os"
@@ -17,7 +17,7 @@ func TestProjectConfigResolvesDBAndBuildSettingsWithoutMergingUserConfig(t *test
 	}
 	userConfigDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
-	userConfigPath := filepath.Join(userConfigDir, "code-index", "config.toml")
+	userConfigPath := filepath.Join(userConfigDir, "manazashi", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(userConfigPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestUserConfigDoesNotAllowDB(t *testing.T) {
 	root := t.TempDir()
 	userConfigDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
-	path := filepath.Join(userConfigDir, "code-index", "config.toml")
+	path := filepath.Join(userConfigDir, "manazashi", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestEncodingFallbacksAreProjectOnlyAndOrdered(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	userPath := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "code-index", "config.toml")
+	userPath := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "manazashi", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestRebuildUsesProjectConfigAndCommandLineOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	if err := run([]string{"rebuild", root}); err != nil {
+	if err := Run([]string{"rebuild", root}); err != nil {
 		t.Fatal(err)
 	}
 	db := filepath.Join(root, ".index", "code.sqlite")
@@ -167,7 +167,7 @@ func TestRebuildUsesProjectConfigAndCommandLineOverrides(t *testing.T) {
 	assertMetaValue(t, db, "config_ignore_dirs", stringListText(ignoreDirs))
 	assertMetaValue(t, db, "config_encoding_fallbacks", stringListText([]string{"Windows-31J"}))
 
-	err := run([]string{"update", "--max-bytes", "54321", root})
+	err := Run([]string{"update", "--max-bytes", "54321", root})
 	if err == nil || !strings.Contains(err.Error(), "max bytes setting is incompatible") {
 		t.Fatalf("update CLI override error = %v", err)
 	}
@@ -175,7 +175,7 @@ func TestRebuildUsesProjectConfigAndCommandLineOverrides(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, projectConfigName), []byte(changedConfig), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err = run([]string{"update", root})
+	err = Run([]string{"update", root})
 	if err == nil || !strings.Contains(err.Error(), "encoding fallbacks setting is incompatible") {
 		t.Fatalf("update encoding fallback error = %v", err)
 	}

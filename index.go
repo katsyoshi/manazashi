@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"crypto/sha256"
@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	codesymbols "github.com/katsyoshi/code-index/internal/symbols"
+	codesymbols "github.com/katsyoshi/manazashi/internal/symbols"
 )
 
 type fileIndex struct {

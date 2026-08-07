@@ -8,7 +8,7 @@ or by file.
 ## Usage
 
 ```text
-code-index metrics [--root ROOT|--db DB] [--language LANG]
+mzci metrics [--root ROOT|--db DB] [--language LANG]
                    [--limit N] [--format text|json] [PATH_QUERY]
 ```
 
@@ -43,9 +43,9 @@ pre-decoding exclusions do not contribute.
 ## Examples
 
 ```sh
-code-index metrics
-code-index metrics --language go --format json
-code-index metrics internal/ --limit 20
+mzci metrics
+mzci metrics --language go --format json
+mzci metrics internal/ --limit 20
 ```
 
 ## Related commands

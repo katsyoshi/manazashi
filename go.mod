@@ -1,4 +1,4 @@
-module github.com/katsyoshi/code-index
+module github.com/katsyoshi/manazashi
 
 go 1.22
 

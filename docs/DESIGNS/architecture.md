@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`code-index` is a small local retrieval layer for source navigation. It turns
+`manazashi` is a small local retrieval layer for source navigation. It turns
 Git-tracked source files into a rebuildable SQLite database so humans and
 agents can narrow a search before reading source.
 
@@ -43,7 +43,7 @@ source repository. The lock contains process and operation metadata. The log
 sidecar contains paths, timestamps, statuses, and error messages but not the
 indexed source corpus.
 
-The project configuration, when present, is `.code-index.toml` at the Git
+The project configuration, when present, is `.manazashi.toml` at the Git
 repository root. It is input to index construction, not part of the generated
 database.
 

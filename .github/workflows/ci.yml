@@ -31,16 +31,16 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build -o /tmp/code-index-bin .
+        run: go build -o /tmp/mzci-bin ./cmd/mzci
 
       - name: Smoke test
         run: |
           tmpdir="$(mktemp -d)"
-          /tmp/code-index-bin init --db "$tmpdir/init.sqlite" .
-          /tmp/code-index-bin status --db "$tmpdir/init.sqlite"
-          /tmp/code-index-bin stats --db "$tmpdir/init.sqlite"
-          /tmp/code-index-bin rebuild .
-          /tmp/code-index-bin update .
-          /tmp/code-index-bin status --root .
-          /tmp/code-index-bin stats --root .
-          /tmp/code-index-bin metrics --root .
+          /tmp/mzci-bin init --db "$tmpdir/init.sqlite" .
+          /tmp/mzci-bin status --db "$tmpdir/init.sqlite"
+          /tmp/mzci-bin stats --db "$tmpdir/init.sqlite"
+          /tmp/mzci-bin rebuild .
+          /tmp/mzci-bin update .
+          /tmp/mzci-bin status --root .
+          /tmp/mzci-bin stats --root .
+          /tmp/mzci-bin metrics --root .

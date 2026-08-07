@@ -8,7 +8,7 @@ compatibility, component state, and the current lock.
 ## Usage
 
 ```text
-code-index status [--root ROOT|--db DB] [--format text|json]
+mzci status [--root ROOT|--db DB] [--format text|json]
 ```
 
 - `--db` selects a database directly.
@@ -56,9 +56,9 @@ perform stale-lock cleanup under their own rules.
 ## Examples
 
 ```sh
-code-index status
-code-index status --root /path/to/repo --format json
-code-index status --db /tmp/index.sqlite
+mzci status
+mzci status --root /path/to/repo --format json
+mzci status --db /tmp/index.sqlite
 ```
 
 ## Related commands

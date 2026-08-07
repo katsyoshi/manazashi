@@ -7,7 +7,7 @@
 ## Usage
 
 ```text
-code-index version [--format text|json]
+mzci version [--format text|json]
 ```
 
 `--format` defaults to `text`. Positional arguments are rejected.
@@ -39,8 +39,8 @@ commit is available and omits `modified` when it is unknown.
 ## Examples
 
 ```sh
-code-index version
-code-index version --format json
+mzci version
+mzci version --format json
 ```
 
 ## Related commands

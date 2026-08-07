@@ -60,7 +60,7 @@ no previous database, the query fails.
 
 ## Help as the interface inventory
 
-`code-index help --format json` is the machine-readable inventory of public
+`mzci help --format json` is the machine-readable inventory of public
 commands, usages, and summaries. It is intended to be the source used to check
 README examples and design documents, though the current manually maintained
 usage strings do not expose every accepted flag.

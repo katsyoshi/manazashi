@@ -7,7 +7,7 @@
 ## Usage
 
 ```text
-code-index defs [--root ROOT|--db DB] [--kind KIND]
+mzci defs [--root ROOT|--db DB] [--kind KIND]
                 [--language LANG] [--limit N] [--list]
                 [--format text|json] [QUERY]
 ```
@@ -51,9 +51,9 @@ are strings. Empty results are `[]`.
 ## Examples
 
 ```sh
-code-index defs parseConfig
-code-index defs --kind method --language ruby --format json save
-code-index defs --list --limit 100 --format json
+mzci defs parseConfig
+mzci defs --kind method --language ruby --format json save
+mzci defs --list --limit 100 --format json
 ```
 
 Combining list and query, omitting a required query, invalid database/config,

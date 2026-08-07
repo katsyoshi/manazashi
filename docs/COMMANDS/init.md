@@ -2,19 +2,19 @@
 
 ## Purpose
 
-`code-index init` initializes a Git repository for later indexing. It creates
+`mzci init` initializes a Git repository for later indexing. It creates
 the project configuration and, when absent, an empty index database. It does
-not index source files; the first content load is `code-index update`.
+not index source files; the first content load is `mzci update`.
 
 ## Usage
 
 ```text
-code-index init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]
+mzci init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]
 ```
 
 - `ROOT` defaults to the current directory. A nested path resolves to the
   containing Git repository root. A path outside a Git work tree is an error.
-- `.code-index.toml` is created at the repository root.
+- `.manazashi.toml` is created at the repository root.
 - An existing configuration is preserved and causes an error unless `--force`
   is supplied. `--force` replaces only the configuration.
 - An existing database is always preserved. Initialization succeeds with
@@ -31,7 +31,7 @@ The generated configuration is intentionally small:
 ```toml
 # max_bytes = 1000000
 # ignore_dirs = ["generated", "scratch"]
-# db = ".code-index/index.sqlite"
+# db = ".manazashi/index.sqlite"
 
 [encoding]
 fallbacks = []
@@ -60,12 +60,12 @@ Text output reports `root`, `config`, `config_created`, `config_replaced`,
 {
   "operation": "init",
   "root": "/repo",
-  "config": "/repo/.code-index.toml",
+  "config": "/repo/.manazashi.toml",
   "config_created": true,
   "config_replaced": false,
-  "db": "/cache/code-index.sqlite",
+  "db": "/cache/manazashi.sqlite",
   "db_created": true,
-  "next_command": "code-index update"
+  "next_command": "mzci update"
 }
 ```
 
@@ -85,9 +85,9 @@ written, the configuration rollback described above is attempted.
 ## Examples
 
 ```sh
-code-index init
-code-index init --db .code-index/index.sqlite /path/to/repo
-code-index init --force --format json
+mzci init
+mzci init --db .manazashi/index.sqlite /path/to/repo
+mzci init --force --format json
 ```
 
 ## Related commands

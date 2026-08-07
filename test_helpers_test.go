@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"encoding/json"
@@ -83,7 +83,7 @@ func captureRunOutput(t *testing.T, args []string) string {
 		os.Stdout = old
 	}()
 	os.Stdout = w
-	runErr := run(args)
+	runErr := Run(args)
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}

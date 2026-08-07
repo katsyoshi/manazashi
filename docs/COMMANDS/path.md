@@ -8,7 +8,7 @@ creating the database.
 ## Usage
 
 ```text
-code-index path [--format text|json] [ROOT]
+mzci path [--format text|json] [ROOT]
 ```
 
 - `ROOT` is optional. Without it, the current directory is promoted to its
@@ -26,7 +26,7 @@ The command loads effective configuration for the resolved root. A project
 Text prints the path followed by a newline. JSON returns:
 
 ```json
-{"path": "/cache/code-index/0123456789abcdef.sqlite"}
+{"path": "/cache/manazashi/0123456789abcdef.sqlite"}
 ```
 
 The command rejects more than one root, an invalid directory, invalid
@@ -35,9 +35,9 @@ configuration, or an unsupported format.
 ## Examples
 
 ```sh
-code-index path
-code-index path /path/to/repo
-code-index path --format json
+mzci path
+mzci path /path/to/repo
+mzci path --format json
 ```
 
 ## Related commands

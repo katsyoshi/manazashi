@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-const projectConfigName = ".code-index.toml"
+const projectConfigName = ".manazashi.toml"
 
 type configScope string
 
@@ -67,7 +67,7 @@ func resolveConfig(root string) (resolvedConfig, error) {
 	candidates = append(candidates, struct {
 		path  string
 		scope configScope
-	}{filepath.Join(string(filepath.Separator), "etc", "code-index", "config.toml"), configScopePC})
+	}{filepath.Join(string(filepath.Separator), "etc", "manazashi", "config.toml"), configScopePC})
 
 	result := resolvedConfig{build: defaultBuildConfig(), scope: configScopeDefault}
 	for _, candidate := range candidates {
@@ -123,13 +123,13 @@ func resolveConfig(root string) (resolvedConfig, error) {
 
 func userConfigPath() string {
 	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
-		return filepath.Join(dir, "code-index", "config.toml")
+		return filepath.Join(dir, "manazashi", "config.toml")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return ""
 	}
-	return filepath.Join(home, ".config", "code-index", "config.toml")
+	return filepath.Join(home, ".config", "manazashi", "config.toml")
 }
 
 func resolveProjectDB(root, value string) (string, error) {

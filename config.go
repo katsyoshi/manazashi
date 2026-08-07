@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 var ignoredDirs = map[string]bool{
 	".bundle":        true,

@@ -8,7 +8,7 @@ machine-readable CLI inventory.
 ## Usage
 
 ```text
-code-index help [--format text|json] [COMMAND]
+mzci help [--format text|json] [COMMAND]
 ```
 
 - `COMMAND` is optional and must be a known command name.
@@ -21,9 +21,9 @@ command. JSON returns:
 
 ```json
 {
-  "usage": "code-index <help|version|...> [options]",
+  "usage": "mzci <help|version|...> [options]",
   "commands": [
-    {"name": "status", "usage": "code-index status ...", "summary": "..."}
+    {"name": "status", "usage": "mzci status ...", "summary": "..."}
   ]
 }
 ```
@@ -37,10 +37,10 @@ format is an error.
 ## Examples
 
 ```sh
-code-index help
-code-index help status
-code-index help --format json
-code-index help --format json status
+mzci help
+mzci help status
+mzci help --format json
+mzci help --format json status
 ```
 
 ## Related commands

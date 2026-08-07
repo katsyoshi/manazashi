@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"errors"
@@ -28,26 +28,27 @@ type helpJSONResult struct {
 }
 
 var commands = []command{
-	{name: "help", usage: "code-index help [--format text|json] [COMMAND]", summary: "show command help"},
-	{name: "version", usage: "code-index version [--format text|json]", summary: "show build and schema information"},
-	{name: "path", usage: "code-index path [--format text|json] [ROOT]", summary: "print the resolved database path"},
-	{name: "init", usage: "code-index init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]", summary: "initialize project config and an empty index"},
-	{name: "rebuild", usage: "code-index rebuild [--db DB] [--max-bytes N] [-v|--verbose] [--format text|json] [ROOT]", summary: "atomically rebuild the full index"},
-	{name: "update", usage: "code-index update [--db DB] [--max-bytes N] [--adopt] [-v|--verbose] [--format text|json] [ROOT]", summary: "create or incrementally refresh the index"},
-	{name: "defs", usage: "code-index defs [--root ROOT|--db DB] [--kind KIND] [--language LANG] [--list] [--format text|json] [QUERY]", summary: "list or find symbol definitions"},
-	{name: "outline", usage: "code-index outline [--root ROOT|--db DB] [--format text|json] PATH", summary: "show symbols in one indexed file"},
-	{name: "refs", usage: "code-index refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG] [--ignore-case] [--limit N] [--format text|json] NAME", summary: "find likely symbol references"},
-	{name: "files", usage: "code-index files [--root ROOT|--db DB] [--language LANG] [--status indexed|skipped|all] [--list] [--format text|json] [QUERY]", summary: "list or find indexed and encoding-skipped files"},
-	{name: "sql", usage: "code-index sql [--root ROOT|--db DB] [--format text|json] [SQL]", summary: "run read-only SQL"},
-	{name: "show", usage: "code-index show [--root ROOT|--db DB] --line N [--context N] [--format text|json] PATH", summary: "show indexed source around a line"},
-	{name: "schema", usage: "code-index schema [--root ROOT|--db DB] [--format text|json]", summary: "show index tables and columns"},
-	{name: "stats", usage: "code-index stats [--root ROOT|--db DB] [--format text|json]", summary: "show index table counts"},
-	{name: "metrics", usage: "code-index metrics [--root ROOT|--db DB] [--language LANG] [--limit N] [--format text|json] [PATH_QUERY]", summary: "show indexed code metrics"},
-	{name: "status", usage: "code-index status [--root ROOT|--db DB] [--format text|json]", summary: "show index metadata, lock state, and freshness"},
-	{name: "logs", usage: "code-index logs [--root ROOT|--db DB] [--limit N] [--format text|json]", summary: "show build operation logs"},
+	{name: "help", usage: "mzci help [--format text|json] [COMMAND]", summary: "show command help"},
+	{name: "version", usage: "mzci version [--format text|json]", summary: "show build and schema information"},
+	{name: "path", usage: "mzci path [--format text|json] [ROOT]", summary: "print the resolved database path"},
+	{name: "init", usage: "mzci init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]", summary: "initialize project config and an empty index"},
+	{name: "rebuild", usage: "mzci rebuild [--db DB] [--max-bytes N] [-v|--verbose] [--format text|json] [ROOT]", summary: "atomically rebuild the full index"},
+	{name: "update", usage: "mzci update [--db DB] [--max-bytes N] [--adopt] [-v|--verbose] [--format text|json] [ROOT]", summary: "create or incrementally refresh the index"},
+	{name: "defs", usage: "mzci defs [--root ROOT|--db DB] [--kind KIND] [--language LANG] [--list] [--format text|json] [QUERY]", summary: "list or find symbol definitions"},
+	{name: "outline", usage: "mzci outline [--root ROOT|--db DB] [--format text|json] PATH", summary: "show symbols in one indexed file"},
+	{name: "refs", usage: "mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG] [--ignore-case] [--limit N] [--format text|json] NAME", summary: "find likely symbol references"},
+	{name: "files", usage: "mzci files [--root ROOT|--db DB] [--language LANG] [--status indexed|skipped|all] [--list] [--format text|json] [QUERY]", summary: "list or find indexed and encoding-skipped files"},
+	{name: "sql", usage: "mzci sql [--root ROOT|--db DB] [--format text|json] [SQL]", summary: "run read-only SQL"},
+	{name: "show", usage: "mzci show [--root ROOT|--db DB] --line N [--context N] [--format text|json] PATH", summary: "show indexed source around a line"},
+	{name: "schema", usage: "mzci schema [--root ROOT|--db DB] [--format text|json]", summary: "show index tables and columns"},
+	{name: "stats", usage: "mzci stats [--root ROOT|--db DB] [--format text|json]", summary: "show index table counts"},
+	{name: "metrics", usage: "mzci metrics [--root ROOT|--db DB] [--language LANG] [--limit N] [--format text|json] [PATH_QUERY]", summary: "show indexed code metrics"},
+	{name: "status", usage: "mzci status [--root ROOT|--db DB] [--format text|json]", summary: "show index metadata, lock state, and freshness"},
+	{name: "logs", usage: "mzci logs [--root ROOT|--db DB] [--limit N] [--format text|json]", summary: "show build operation logs"},
 }
 
-func run(args []string) error {
+// Run executes the mzci command with the supplied arguments.
+func Run(args []string) error {
 	if len(args) == 0 {
 		printUsage(os.Stderr)
 		return errors.New("missing command")
@@ -118,7 +119,7 @@ func topLevelUsage() string {
 	for _, cmd := range commands {
 		names = append(names, cmd.name)
 	}
-	return fmt.Sprintf("code-index <%s> [options]", strings.Join(names, "|"))
+	return fmt.Sprintf("mzci <%s> [options]", strings.Join(names, "|"))
 }
 
 func commandUsage(name string) string {
@@ -127,7 +128,7 @@ func commandUsage(name string) string {
 			return "usage: " + cmd.usage
 		}
 	}
-	return "usage: code-index " + name
+	return "usage: mzci " + name
 }
 
 func cmdHelp(args []string) error {
