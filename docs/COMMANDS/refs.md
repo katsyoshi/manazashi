@@ -12,7 +12,7 @@ graph.
 ## Usage
 
 ```text
-code-index refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
+mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
                 [--ignore-case] [--limit N] [--format text|json] NAME
 ```
 
@@ -188,9 +188,9 @@ array means all kinds; it is distinct from an unknown or unavailable value.
 ## Examples
 
 ```sh
-code-index refs UserRepository
-code-index refs --kind class --language ruby UserRepository
-code-index refs --ignore-case --limit 20 --format json run_task
+mzci refs UserRepository
+mzci refs --kind class --language ruby UserRepository
+mzci refs --ignore-case --limit 20 --format json run_task
 ```
 
 ## Non-goals

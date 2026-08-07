@@ -8,7 +8,7 @@ database snapshot, not the live checkout.
 ## Usage
 
 ```text
-code-index show [--root ROOT|--db DB] --line N [--context N]
+mzci show [--root ROOT|--db DB] --line N [--context N]
                 [--format text|json] PATH
 ```
 
@@ -31,7 +31,7 @@ returns no rows.
 Text is tabular. JSON is an array of:
 
 ```json
-{"path":"cmd.go","line":42,"text":"func run(args []string) error {"}
+{"path":"cmd.go","line":51,"text":"func Run(args []string) error {"}
 ```
 
 `line` is numeric; empty results are `[]`. Lock warnings use stderr.
@@ -39,8 +39,8 @@ Text is tabular. JSON is an array of:
 ## Examples
 
 ```sh
-code-index show --line 42 cmd.go
-code-index show --line 42 --context 8 --format json cmd.go
+mzci show --line 42 cmd.go
+mzci show --line 42 --context 8 --format json cmd.go
 ```
 
 ## Related commands

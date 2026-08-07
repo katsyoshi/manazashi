@@ -8,7 +8,7 @@ order.
 ## Usage
 
 ```text
-code-index outline [--root ROOT|--db DB] [--format text|json] PATH
+mzci outline [--root ROOT|--db DB] [--format text|json] PATH
 ```
 
 `PATH` is required. A leading slash is removed and separators are normalized
@@ -45,8 +45,8 @@ Text is tabular. JSON uses the same definition object as `defs`:
 ## Examples
 
 ```sh
-code-index outline internal/config.go
-code-index outline --format json config.go
+mzci outline internal/config.go
+mzci outline --format json config.go
 ```
 
 ## Related commands

@@ -7,7 +7,7 @@
 ## Usage
 
 ```text
-code-index files [--root ROOT|--db DB] [--language LANG]
+mzci files [--root ROOT|--db DB] [--language LANG]
                  [--status indexed|skipped|all] [--limit N] [--list]
                  [--format text|json] [QUERY]
 ```
@@ -50,9 +50,9 @@ Empty JSON results are `[]`.
 ## Examples
 
 ```sh
-code-index files --list
-code-index files config --format json
-code-index files --status skipped --list --format json
+mzci files --list
+mzci files config --format json
+mzci files --status skipped --list --format json
 ```
 
 ## Related commands

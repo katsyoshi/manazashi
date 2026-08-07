@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ func TestStatusReportsLock(t *testing.T) {
 	}
 	defer lock.release()
 
-	if err := run([]string{"status", "--db", db}); err != nil {
+	if err := Run([]string{"status", "--db", db}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -36,7 +36,7 @@ func TestStatusReportsUpdateCompatibility(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,7 +81,7 @@ func TestStatusJSONUsesNativeTypesAndNulls(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,7 +118,7 @@ func TestStatusJSONUsesNativeTypesAndNulls(t *testing.T) {
 	if !ok || len(components) != 5 {
 		t.Fatalf("status JSON components = %#v, want five components", result["components"])
 	}
-	if err := run([]string{"status", "--db", db, "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"status", "--db", db, "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("status with unsupported format error = %v", err)
 	}
 }
@@ -169,7 +169,7 @@ func TestStatusTreatsIndexedDirtyWorkTreeAsFresh(t *testing.T) {
 	if err := os.WriteFile(path, []byte("package main\n\nfunc dirtyName() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := run([]string{"update", "--db", db, root}); err != nil {
+	if err := Run([]string{"update", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 

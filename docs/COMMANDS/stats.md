@@ -7,7 +7,7 @@
 ## Usage
 
 ```text
-code-index stats [--root ROOT|--db DB] [--format text|json]
+mzci stats [--root ROOT|--db DB] [--format text|json]
 ```
 
 Positional arguments are rejected. `--format` defaults to `text`.
@@ -36,8 +36,8 @@ current checkout or lock compatibility.
 ## Examples
 
 ```sh
-code-index stats
-code-index stats --root /path/to/repo --format json
+mzci stats
+mzci stats --root /path/to/repo --format json
 ```
 
 ## Related commands

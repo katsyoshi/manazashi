@@ -1,41 +1,44 @@
 ---
-name: code-index
+name: manazashi
 description: Build and use a local SQLite index for code navigation instead of ad hoc grep/rg/find searches. Use when an AI coding agent needs to locate files, classes, functions, methods, symbols, definitions, references, source lines, code metrics, or index status across an unfamiliar repository; when repeated codebase lookup would otherwise use shell text search; or when the user asks for SQL-backed, database-backed, or indexed code search.
 ---
 
-# Code Index
+# Manazashi
 
 ## Overview
 
-Use `code-index` as the first search surface for codebase navigation. Prefer SQL-backed queries for locating files, definitions, methods, classes, relevant source lines, metrics, and index status.
+Use Manazashi as the first search surface for codebase navigation. Prefer SQL-backed queries for locating files, definitions, methods, classes, relevant source lines, metrics, and index status.
 
-Use an external `code-index` binary from an explicit `CODE_INDEX_BIN` path. `code-index` may be on `PATH` for humans, but this skill must not search `PATH`. If `CODE_INDEX_BIN` is not set, ask the user to install `code-index` and configure `CODE_INDEX_BIN` in the environment used by their agent runtime.
+Use only an explicitly selected `mzci` binary. Prefer the absolute path in
+`MANAZASHI_BIN` when it is set; otherwise use `exec/mzci` under the directory
+containing this `SKILL.md`. Never search `PATH`, run a repository-local binary,
+or select any other fallback. If the selected file is missing or not
+executable, stop and ask the user to install or configure Manazashi.
 
 ## Install Guidance
 
-When `CODE_INDEX_BIN` is missing or points to a non-executable file, do not search `PATH`. Ask the user to install `code-index` under the directory containing this `SKILL.md`, then configure `CODE_INDEX_BIN` in the environment used by their agent runtime:
+The default installation belongs under the installed skill directory:
 
 ```bash
-SKILL_DIR=/path/to/installed/skills/code-index
+SKILL_DIR=/path/to/installed/skills/manazashi
 mkdir -p "$SKILL_DIR/exec"
-GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/code-index@latest
-export CODE_INDEX_BIN="$SKILL_DIR/exec/code-index"
-export CODE_INDEX_CACHE_DIR="${CODE_INDEX_CACHE_DIR:-/tmp/code-index}"
-"$CODE_INDEX_BIN" version
+GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/manazashi/cmd/mzci@latest
+export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
+"$SKILL_DIR/exec/mzci" version
 ```
 
-Configure both environment variables in the agent runtime rather than relying
-on an interactive shell profile. A persistent `CODE_INDEX_BIN` avoids repeating
-the absolute binary path, and a persistent writable `CODE_INDEX_CACHE_DIR`
-avoids repeating cache configuration in sandboxed sessions.
+Set `MANAZASHI_BIN` in the agent runtime only to override the bundled binary
+with another trusted executable. A writable `MANAZASHI_CACHE_DIR` avoids
+repeating cache configuration in sandboxed sessions.
 
-For local development of this repository, building the checked-out source with `go build -o "$SKILL_DIR/exec/code-index" .` and pointing `CODE_INDEX_BIN` at that binary is also acceptable.
+For local development of this repository, building the checked-out source with
+`go build -o "$SKILL_DIR/exec/mzci" ./cmd/mzci` is also acceptable.
 
 The `version` output identifies the binary by build commit when available. Treat the commit hash as an identity, not as an ordered version, unless you have commit-history context.
 
 ## Operating Principles
 
-Read the `Design` section in the repository `README.md` as the source of truth for project direction. In this skill, apply that direction as an operating rule: use `code-index` to reduce how much source enters the LLM context.
+Read the `Design` section in the repository `README.md` as the source of truth for project direction. In this skill, apply that direction as an operating rule: use Manazashi to reduce how much source enters the LLM context.
 
 - Query SQLite/FTS before opening files broadly.
 - Prefer a few targeted `show`, `outline`, `defs`, `refs`, `files`, `metrics`, or read-only SQL results over loading whole directories.
@@ -44,23 +47,20 @@ Read the `Design` section in the repository `README.md` as the source of truth f
 ## Workflow
 
 1. Resolve the target repository root.
-2. Select the tool:
+2. Select the tool using this fixed precedence:
 
-```bash
-if [ -z "${CODE_INDEX_BIN:-}" ]; then
-  echo "CODE_INDEX_BIN is not set; install code-index and set CODE_INDEX_BIN to the binary path" >&2
-  exit 1
-fi
+| Condition | Tool |
+| --- | --- |
+| `MANAZASHI_BIN` is set to an absolute path | That exact path |
+| `MANAZASHI_BIN` is set to a relative path | Stop and ask the user to configure an absolute path |
+| `MANAZASHI_BIN` is unset | `exec/mzci` beside this `SKILL.md` |
+| The selected file is missing or not executable | Stop and ask the user to install or configure Manazashi |
 
-TOOL="$CODE_INDEX_BIN"
+Do not inspect `PATH`, call `command -v` or `which`, or use an executable found
+in the target repository. Set `TOOL` to the selected absolute path for the
+remaining commands.
 
-if [ ! -x "$TOOL" ]; then
-  echo "code-index is not executable: $TOOL" >&2
-  exit 1
-fi
-```
-
-3. Check the tool build information. Prefer a build commit hash over semver for identifying the binary, but do not infer ordering from the hash without commit history. Treat the hash as compatible only when it is in a known compatible list, or use explicit feature checks when the binary supports them. If the command is unsupported or the build is incompatible for the workflow you need, ask the user to install or configure a compatible `code-index` binary:
+3. Check the tool build information. Prefer a build commit hash over semver for identifying the binary, but do not infer ordering from the hash without commit history. Treat the hash as compatible only when it is in a known compatible list, or use explicit feature checks when the binary supports them. If the command is unsupported or the build is incompatible for the workflow you need, ask the user to install or configure a compatible `mzci` binary:
 
 ```bash
 "$TOOL" version --format json
@@ -69,7 +69,7 @@ fi
 4. In sandboxed agent sessions, prefer a writable cache directory unless the user gave a DB path:
 
 ```bash
-export CODE_INDEX_CACHE_DIR="${CODE_INDEX_CACHE_DIR:-/tmp/code-index}"
+export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
 ```
 
 5. Build or refresh the index before substantial search work. Prefer `update` for an existing index; it refreshes changed Git-tracked files and removes files no longer tracked by Git:
@@ -153,7 +153,7 @@ Common commands:
 # Show build information for compatibility checks.
 "$TOOL" version --format json
 
-# Create .code-index.toml and an empty schema; run update next.
+# Create .manazashi.toml and an empty schema; run update next.
 "$TOOL" init --format json
 
 # Atomic full rebuild from Git-tracked files. Current CLI skips successfully if another operation holds the lock.
@@ -197,7 +197,7 @@ Common commands:
 "$TOOL" show --line 42 --context 20 --format json lib/user_repository.rb
 ```
 
-Commands run inside a Git work tree discover its repository root automatically. The default database lives under `CODE_INDEX_CACHE_DIR` when set. Otherwise it uses `$XDG_CACHE_HOME/code-index` or `~/.cache/code-index`, keyed by the repository root path. A project `.code-index.toml` may override the database with a repository-relative `db`; pass `--db path/to/index.sqlite` for an explicit one-run override.
+Commands run inside a Git work tree discover its repository root automatically. The default database lives under `MANAZASHI_CACHE_DIR` when set. Otherwise it uses `$XDG_CACHE_HOME/manazashi` or `~/.cache/manazashi`, keyed by the repository root path. A project `.manazashi.toml` may override the database with a repository-relative `db`; pass `--db path/to/index.sqlite` for an explicit one-run override.
 
 Build results include transcoded and encoding-skipped counts. Use `-v` or
 `--verbose` for per-file encoding diagnostics. The normal `files` view contains

@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestStatsCommandRejectsExtraArgs(t *testing.T) {
-	if err := run([]string{"stats", "extra"}); err == nil {
+	if err := Run([]string{"stats", "extra"}); err == nil {
 		t.Fatal("stats with extra arg succeeded, want failure")
 	}
 }
@@ -37,7 +37,7 @@ func TestStatsCommandJSONOutputUsesNativeTypesAndNulls(t *testing.T) {
 	if result.VCSDirty != nil {
 		t.Fatalf("stats JSON vcs_dirty = %#v, want null", result.VCSDirty)
 	}
-	if err := run([]string{"stats", "--db", db, "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"stats", "--db", db, "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("stats with unsupported format error = %v", err)
 	}
 }
@@ -129,10 +129,10 @@ func TestSchemaCommandShowsUserTablesAndColumns(t *testing.T) {
 			t.Fatalf("schema JSON includes FTS shadow table: %q", jsonOut)
 		}
 	}
-	if err := run([]string{"schema", "--db", db, "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"schema", "--db", db, "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("schema with unsupported format error = %v", err)
 	}
-	if err := run([]string{"schema", "--db", db, "extra"}); err == nil {
+	if err := Run([]string{"schema", "--db", db, "extra"}); err == nil {
 		t.Fatal("schema with extra arg succeeded, want failure")
 	}
 }
@@ -151,7 +151,7 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -271,20 +271,20 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 		{"metrics", "--db", db, "--format", "yaml"},
 	}
 	for _, args := range invalidFormatArgs {
-		if err := run(args); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+		if err := Run(args); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 			t.Fatalf("%s with unsupported format error = %v", args[0], err)
 		}
 	}
-	if err := run([]string{"outline", "--db", db}); err == nil {
+	if err := Run([]string{"outline", "--db", db}); err == nil {
 		t.Fatal("outline without path succeeded, want failure")
 	}
-	if err := run([]string{"refs", "--db", db}); err == nil {
+	if err := Run([]string{"refs", "--db", db}); err == nil {
 		t.Fatal("refs without name succeeded, want failure")
 	}
-	if err := run([]string{"refs", "--db", db, ""}); err == nil {
+	if err := Run([]string{"refs", "--db", db, ""}); err == nil {
 		t.Fatal("refs with empty name succeeded, want failure")
 	}
-	if err := run([]string{"refs", "--db", db, "--limit", "0", "main"}); err == nil {
+	if err := Run([]string{"refs", "--db", db, "--limit", "0", "main"}); err == nil {
 		t.Fatal("refs with non-positive limit succeeded, want failure")
 	}
 	invalidListArgs := [][]string{
@@ -294,7 +294,7 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 		{"files", "--db", db},
 	}
 	for _, args := range invalidListArgs {
-		if err := run(args); err == nil {
+		if err := Run(args); err == nil {
 			t.Fatalf("%s with invalid list/query arguments succeeded", args[0])
 		}
 	}
@@ -327,7 +327,7 @@ func TestSQLCommandJSONOutputPreservesDynamicTypes(t *testing.T) {
 	if empty == nil || len(empty) != 0 {
 		t.Fatalf("empty sql JSON = %#v, want []", empty)
 	}
-	if err := run([]string{"sql", "--db", db, "--format", "yaml", "select 1"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"sql", "--db", db, "--format", "yaml", "select 1"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("sql with unsupported format error = %v", err)
 	}
 }

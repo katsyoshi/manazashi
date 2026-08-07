@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`code-index` stores and searches source text as UTF-8 regardless of the source
+`manazashi` stores and searches source text as UTF-8 regardless of the source
 file's original encoding. Source files are read-only inputs and are never
 rewritten during `rebuild` or `update`.
 
@@ -185,6 +185,6 @@ Project path rules, `nkf`, and heuristic encoding detection are deferred.
 - Depending on the process locale for decoding
 - Treating every NUL-containing file as text
 - Preserving original source bytes inside SQLite
-- Making `code-index` a general-purpose encoding conversion tool
+- Making `manazashi` a general-purpose encoding conversion tool
 - Guaranteeing that every encoding accepted by one platform's `iconv` exists
   on every other platform

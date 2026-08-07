@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"os"
@@ -22,10 +22,10 @@ func TestBuildCommandsJSONOutput(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 
-	initDB := filepath.Join(root, ".code-index", "init.sqlite")
+	initDB := filepath.Join(root, ".manazashi", "init.sqlite")
 	var initialized initJSONResult
-	decodeRunJSON(t, []string{"init", "--db", ".code-index/init.sqlite", "--format", "json", root}, &initialized)
-	if initialized.Operation != "init" || initialized.Root != root || initialized.Config != filepath.Join(root, projectConfigName) || !initialized.ConfigCreated || initialized.ConfigReplaced || initialized.DB != initDB || !initialized.DBCreated || initialized.NextCommand != "code-index update" {
+	decodeRunJSON(t, []string{"init", "--db", ".manazashi/init.sqlite", "--format", "json", root}, &initialized)
+	if initialized.Operation != "init" || initialized.Root != root || initialized.Config != filepath.Join(root, projectConfigName) || !initialized.ConfigCreated || initialized.ConfigReplaced || initialized.DB != initDB || !initialized.DBCreated || initialized.NextCommand != "mzci update" {
 		t.Fatalf("init JSON = %#v", initialized)
 	}
 
@@ -51,7 +51,7 @@ func TestBuildCommandsJSONOutput(t *testing.T) {
 		{"update", "--db", db, "--format", "yaml", root},
 	}
 	for _, args := range invalidFormatArgs {
-		if err := run(args); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+		if err := Run(args); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 			t.Fatalf("%s with unsupported format error = %v", args[0], err)
 		}
 	}
@@ -121,7 +121,7 @@ func TestUpdateCommandRequiresExistingIndex(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
 
-	err := run([]string{"update", "--db", db, root})
+	err := Run([]string{"update", "--db", db, root})
 	if err == nil {
 		t.Fatal("update without existing index succeeded, want failure")
 	}
@@ -147,7 +147,7 @@ func TestUpdateOutputReportsChangedFileCounts(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
 
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	out := captureRunOutput(t, []string{"update", "--db", db, root})
@@ -175,10 +175,10 @@ func TestInitCommandCreatesProjectConfigAndPreservesExistingIndex(t *testing.T) 
 		t.Fatal(err)
 	}
 	initGitRepo(t, root, "main.go")
-	db := filepath.Join(root, ".code-index", "index.sqlite")
+	db := filepath.Join(root, ".manazashi", "index.sqlite")
 
-	out := captureRunOutput(t, []string{"init", "--db", ".code-index/index.sqlite", root})
-	for _, want := range []string{"config_created: true", "config_replaced: false", "db_created: true", "next: code-index update"} {
+	out := captureRunOutput(t, []string{"init", "--db", ".manazashi/index.sqlite", root})
+	for _, want := range []string{"config_created: true", "config_replaced: false", "db_created: true", "next: mzci update"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("init output = %q, want %q", out, want)
 		}
@@ -187,7 +187,7 @@ func TestInitCommandCreatesProjectConfigAndPreservesExistingIndex(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(string(config), "db = \".code-index/index.sqlite\"\n\n") {
+	if !strings.HasPrefix(string(config), "db = \".manazashi/index.sqlite\"\n\n") {
 		t.Fatalf("config = %q", config)
 	}
 	sqlOut, err := exec.Command("sqlite3", "-batch", db, "select count(*) from files;").Output()
@@ -208,12 +208,12 @@ func TestInitCommandCreatesProjectConfigAndPreservesExistingIndex(t *testing.T) 
 	if _, err := os.Stat(indexLockPath(db)); !os.IsNotExist(err) {
 		t.Fatalf("lock file still exists or returned unexpected error: %v", err)
 	}
-	if err := run([]string{"init", "--db", ".code-index/index.sqlite", root}); err == nil {
+	if err := Run([]string{"init", "--db", ".manazashi/index.sqlite", root}); err == nil {
 		t.Fatal("init with existing config succeeded without --force")
 	}
 	assertSQLiteValue(t, db, "insert into meta(key, value) values ('preserved', 'yes') returning value;", "yes")
 	var forced initJSONResult
-	decodeRunJSON(t, []string{"init", "--force", "--db", ".code-index/index.sqlite", "--format", "json", root}, &forced)
+	decodeRunJSON(t, []string{"init", "--force", "--db", ".manazashi/index.sqlite", "--format", "json", root}, &forced)
 	if forced.ConfigCreated || !forced.ConfigReplaced || forced.DBCreated {
 		t.Fatalf("forced init JSON = %#v", forced)
 	}
@@ -244,7 +244,7 @@ func TestRebuildCommandCreatesSQLiteIndex(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
 
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(db); err != nil {
@@ -288,7 +288,7 @@ func TestRebuildStoresVCSRevision(t *testing.T) {
 	ref := runGitOutput(t, root, "symbolic-ref", "--quiet", "--short", "HEAD")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
 
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -297,7 +297,7 @@ func TestRebuildStoresVCSRevision(t *testing.T) {
 	assertMetaValue(t, db, "vcs_head", revision)
 	assertMetaValue(t, db, "vcs_branch", ref)
 	assertMetaValue(t, db, "vcs_dirty", boolText(false))
-	if err := run([]string{"status", "--db", db}); err != nil {
+	if err := Run([]string{"status", "--db", db}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -318,7 +318,7 @@ func TestUpdateCommandAppliesFileChanges(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go", "stale.rb")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -336,7 +336,7 @@ func TestUpdateCommandAppliesFileChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := run([]string{"update", "--db", db, root}); err != nil {
+	if err := Run([]string{"update", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	assertSQLiteValue(t, db, "select count(*) from symbols where name = 'oldName';", "0")
@@ -364,7 +364,7 @@ func TestUpdateCommandRemovesStaleSymbolsAcrossCommits(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -374,7 +374,7 @@ func TestUpdateCommandRemovesStaleSymbolsAcrossCommits(t *testing.T) {
 	runGit(t, root, "add", "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "rename function")
 
-	if err := run([]string{"update", "--db", db, root}); err != nil {
+	if err := Run([]string{"update", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	assertSQLiteValue(t, db, "select count(*) from symbols where name = 'oldName';", "0")
@@ -394,11 +394,11 @@ func TestUpdateCommandIndexesInitializedDB(t *testing.T) {
 		t.Fatal(err)
 	}
 	initGitRepo(t, root, "main.go")
-	db := filepath.Join(root, ".code-index", "index.sqlite")
-	if err := run([]string{"init", "--db", ".code-index/index.sqlite", root}); err != nil {
+	db := filepath.Join(root, ".manazashi", "index.sqlite")
+	if err := Run([]string{"init", "--db", ".manazashi/index.sqlite", root}); err != nil {
 		t.Fatal(err)
 	}
-	if err := run([]string{"update", root}); err != nil {
+	if err := Run([]string{"update", root}); err != nil {
 		t.Fatal(err)
 	}
 	assertSQLiteValue(t, db, "select count(*) from symbols where name = 'main';", "1")
@@ -418,7 +418,7 @@ func TestUpdateRejectsDifferentRootUnlessAdopted(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	otherRoot := filepath.Join(t.TempDir(), "checkout")
@@ -426,14 +426,14 @@ func TestUpdateRejectsDifferentRootUnlessAdopted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := run([]string{"update", "--db", db, otherRoot})
+	err := Run([]string{"update", "--db", db, otherRoot})
 	if err == nil {
 		t.Fatal("update with different root succeeded, want failure")
 	}
 	if !strings.Contains(err.Error(), "different checkout") || !strings.Contains(err.Error(), "update --adopt") {
 		t.Fatalf("error = %q, want checkout mismatch with adopt guidance", err)
 	}
-	if err := run([]string{"update", "--db", db, "--adopt", otherRoot}); err != nil {
+	if err := Run([]string{"update", "--db", db, "--adopt", otherRoot}); err != nil {
 		t.Fatal(err)
 	}
 	assertMetaValue(t, db, "root", otherRoot)
@@ -453,19 +453,19 @@ func TestUpdateRejectsUnknownHistoryUnlessAdopted(t *testing.T) {
 	initGitRepo(t, root, "main.go")
 	runGit(t, root, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	assertSQLiteValue(t, db, "update meta set value = '0000000000000000000000000000000000000000' where key in ('vcs_head', 'vcs_revision'); select changes();", "2")
 
-	err := run([]string{"update", "--db", db, root})
+	err := Run([]string{"update", "--db", db, root})
 	if err == nil {
 		t.Fatal("update with unknown history succeeded, want failure")
 	}
 	if !strings.Contains(err.Error(), "unknown Git history") || !strings.Contains(err.Error(), "update --adopt") {
 		t.Fatalf("error = %q, want history mismatch with adopt guidance", err)
 	}
-	if err := run([]string{"update", "--db", db, "--adopt", root}); err != nil {
+	if err := Run([]string{"update", "--db", db, "--adopt", root}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -483,12 +483,12 @@ func TestUpdateAdoptDoesNotBypassSchemaMismatch(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	assertSQLiteValue(t, db, "update meta set value = '0' where key = 'schema_version'; select changes();", "1")
 
-	err := run([]string{"update", "--db", db, "--adopt", root})
+	err := Run([]string{"update", "--db", db, "--adopt", root})
 	if err == nil {
 		t.Fatal("update --adopt with schema mismatch succeeded, want failure")
 	}
@@ -510,12 +510,12 @@ func TestUpdateRejectsConfigMismatch(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, "--max-bytes", "12345", root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, "--max-bytes", "12345", root}); err != nil {
 		t.Fatal(err)
 	}
 	assertMetaValue(t, db, "config_max_bytes", "12345")
 
-	err := run([]string{"update", "--db", db, root})
+	err := Run([]string{"update", "--db", db, root})
 	if err == nil {
 		t.Fatal("update with max-bytes mismatch succeeded, want failure")
 	}
@@ -547,13 +547,13 @@ func TestUpdateRejectsFTS5Mismatch(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	mismatched := boolText(!hasFTS5())
 	assertSQLiteValue(t, db, "update meta set value = "+quote(mismatched)+" where key = 'fts5'; select changes();", "1")
 
-	err := run([]string{"update", "--db", db, root})
+	err := Run([]string{"update", "--db", db, root})
 	if err == nil {
 		t.Fatal("update with fts5 mismatch succeeded, want failure")
 	}
@@ -584,7 +584,7 @@ func TestRebuildRequiresGitWorkTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	err := run([]string{"rebuild", "--db", db, root})
+	err := Run([]string{"rebuild", "--db", db, root})
 	if err == nil {
 		t.Fatal("rebuild succeeded outside a Git work tree, want failure")
 	}

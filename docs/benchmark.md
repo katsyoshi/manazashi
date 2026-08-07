@@ -39,7 +39,7 @@ Targets are selected from each index rather than fixed across repositories:
 Measured on 2026-07-24 (UTC):
 
 - Rails `main`: `b6cb9ea7657ea46eb35fdd73b9b2174f7a93a8c0`
-- code-index: `0a55e39fa7366beca0272457547b05f987eeab8b`
+- manazashi: `0a55e39fa7366beca0272457547b05f987eeab8b`
 - Git-tracked files: 4,971
 - Indexed files: 4,854
 - Indexed lines: 684,668
@@ -64,7 +64,7 @@ Measured on 2026-07-24 (UTC):
 Measured on 2026-07-24 (UTC):
 
 - Go `master`: `a961f702a48edbfc044639775f4ffae692b7f0dc`
-- code-index: `0a55e39fa7366beca0272457547b05f987eeab8b`
+- manazashi: `0a55e39fa7366beca0272457547b05f987eeab8b`
 - Git-tracked files: 15,671
 - Indexed files: 13,660
 - Indexed lines: 2,832,488

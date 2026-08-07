@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"strings"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestVersionCommand(t *testing.T) {
-	if err := run([]string{"version"}); err != nil {
+	if err := Run([]string{"version"}); err != nil {
 		t.Fatal(err)
 	}
 	var result versionJSONResult
@@ -17,10 +17,10 @@ func TestVersionCommand(t *testing.T) {
 	if result.Commit != nil && *result.Commit == "unknown" {
 		t.Fatalf("version JSON commit = %q, want null for unknown", *result.Commit)
 	}
-	if err := run([]string{"version", "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"version", "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("version with unsupported format error = %v", err)
 	}
-	if err := run([]string{"version", "extra"}); err == nil {
+	if err := Run([]string{"version", "extra"}); err == nil {
 		t.Fatal("version with extra arg succeeded, want failure")
 	}
 }
@@ -39,7 +39,7 @@ func TestPathCommandJSONOutput(t *testing.T) {
 	if result.Path != want {
 		t.Fatalf("path JSON = %#v, want %q", result, want)
 	}
-	if err := run([]string{"path", "--format", "yaml", root}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"path", "--format", "yaml", root}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("path with unsupported format error = %v", err)
 	}
 	withoutRoot := strings.TrimSpace(captureRunOutput(t, []string{"path"}))
@@ -54,7 +54,7 @@ func TestHelpCommand(t *testing.T) {
 		t.Fatalf("help output = %q, want command list", out)
 	}
 	out = captureRunOutput(t, []string{"help", "update"})
-	if !strings.Contains(out, "usage: code-index update") {
+	if !strings.Contains(out, "usage: mzci update") {
 		t.Fatalf("help update output = %q, want update usage", out)
 	}
 	var all helpJSONResult
@@ -64,13 +64,13 @@ func TestHelpCommand(t *testing.T) {
 	}
 	var update helpJSONCommand
 	decodeRunJSON(t, []string{"help", "--format", "json", "update"}, &update)
-	if update.Name != "update" || !strings.Contains(update.Usage, "code-index update") || update.Summary == "" {
+	if update.Name != "update" || !strings.Contains(update.Usage, "mzci update") || update.Summary == "" {
 		t.Fatalf("help update JSON = %#v", update)
 	}
-	if err := run([]string{"help", "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
+	if err := Run([]string{"help", "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("help with unsupported format error = %v", err)
 	}
-	if err := run([]string{"help", "missing"}); err == nil {
+	if err := Run([]string{"help", "missing"}); err == nil {
 		t.Fatal("help missing succeeded, want failure")
 	}
 }

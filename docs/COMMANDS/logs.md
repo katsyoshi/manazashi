@@ -7,7 +7,7 @@
 ## Usage
 
 ```text
-code-index logs [--root ROOT|--db DB] [--limit N] [--format text|json]
+mzci logs [--root ROOT|--db DB] [--limit N] [--format text|json]
 ```
 
 - `--limit` defaults to 20 and must be positive.
@@ -38,9 +38,9 @@ warning and does not change the mutation result.
 ## Examples
 
 ```sh
-code-index logs
-code-index logs --limit 50 --format json
-code-index logs --db /tmp/index.sqlite
+mzci logs
+mzci logs --limit 50 --format json
+mzci logs --db /tmp/index.sqlite
 ```
 
 ## Related commands

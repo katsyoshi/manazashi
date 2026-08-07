@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"bytes"
@@ -27,16 +27,16 @@ func defaultDBPath(root string) string {
 }
 
 func defaultCacheDir() string {
-	if dir := os.Getenv("CODE_INDEX_CACHE_DIR"); dir != "" {
+	if dir := os.Getenv("MANAZASHI_CACHE_DIR"); dir != "" {
 		return dir
 	}
 	if dir := os.Getenv("XDG_CACHE_HOME"); dir != "" {
-		return filepath.Join(dir, "code-index")
+		return filepath.Join(dir, "manazashi")
 	}
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return filepath.Join(home, ".cache", "code-index")
+		return filepath.Join(home, ".cache", "manazashi")
 	}
-	return filepath.Join(os.TempDir(), "code-index")
+	return filepath.Join(os.TempDir(), "manazashi")
 }
 
 func createTempDBPath(db string) (string, error) {

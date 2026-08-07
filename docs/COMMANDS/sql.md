@@ -8,7 +8,7 @@ covered by dedicated commands.
 ## Usage
 
 ```text
-code-index sql [--root ROOT|--db DB] [--format text|json] [SQL]
+mzci sql [--root ROOT|--db DB] [--format text|json] [SQL]
 ```
 
 If `SQL` is omitted, the entire standard input is read as the query. More than
@@ -30,7 +30,7 @@ Text enables SQLite headers and tab-separated mode. JSON returns an array of
 objects whose fields and types come from the query:
 
 ```json
-[{"path":"cmd.go","line":42,"name":"run"}]
+[{"path":"cmd.go","line":51,"name":"Run"}]
 ```
 
 SQLite integers and real values remain JSON numbers; null remains null. Use
@@ -43,11 +43,11 @@ result document from the previous database.
 ## Examples
 
 ```sh
-code-index sql \
+mzci sql \
   "select path, line, name from symbols where kind = 'function' limit 20"
 
 printf '%s\n' "select count(*) as files from files" |
-  code-index sql --format json
+  mzci sql --format json
 ```
 
 ## Related commands

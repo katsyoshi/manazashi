@@ -1,8 +1,9 @@
+/mzci
 /code-index
 /.local/
 /.codex/
 /.claude/
-/skills/code-index/exec/*
+/skills/manazashi/exec/*
 /*.md
 *.sqlite
 *.sqlite3

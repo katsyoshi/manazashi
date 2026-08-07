@@ -5,10 +5,10 @@
 At most one TOML configuration file is loaded. Candidates are checked in this
 order:
 
-1. `REPOSITORY_ROOT/.code-index.toml`
-2. `$XDG_CONFIG_HOME/code-index/config.toml`, or
-   `~/.config/code-index/config.toml`
-3. `/etc/code-index/config.toml`
+1. `REPOSITORY_ROOT/.manazashi.toml`
+2. `$XDG_CONFIG_HOME/manazashi/config.toml`, or
+   `~/.config/manazashi/config.toml`
+3. `/etc/manazashi/config.toml`
 
 The first existing file completely shadows less-specific files. Values are not
 merged across scopes. Fields omitted from the selected file use built-in
@@ -19,7 +19,7 @@ Supported values are:
 ```toml
 max_bytes = 1000000
 ignore_dirs = ["generated", "scratch"]
-db = ".code-index/index.sqlite"
+db = ".manazashi/index.sqlite"
 
 [encoding]
 fallbacks = ["Windows-31J", "EUC-JP"]
@@ -68,9 +68,9 @@ database. An explicit `--db` bypasses root/config database selection.
 
 When neither CLI nor project configuration selects a database, the path is:
 
-1. `$CODE_INDEX_CACHE_DIR/<root-hash>.sqlite`
-2. `$XDG_CACHE_HOME/code-index/<root-hash>.sqlite`
-3. `~/.cache/code-index/<root-hash>.sqlite`
+1. `$MANAZASHI_CACHE_DIR/<root-hash>.sqlite`
+2. `$XDG_CACHE_HOME/manazashi/<root-hash>.sqlite`
+3. `~/.cache/manazashi/<root-hash>.sqlite`
 4. the platform temporary directory as a final fallback
 
 The filename uses the first 16 hexadecimal characters of SHA-256 over the

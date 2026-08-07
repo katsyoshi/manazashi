@@ -8,7 +8,7 @@ read-only SQL without inspecting SQLite internals.
 ## Usage
 
 ```text
-code-index schema [--root ROOT|--db DB] [--format text|json]
+mzci schema [--root ROOT|--db DB] [--format text|json]
 ```
 
 Positional arguments are rejected. `--format` defaults to `text`.
@@ -40,8 +40,8 @@ No rows returns `[]`.
 ## Examples
 
 ```sh
-code-index schema
-code-index schema --format json --db /tmp/index.sqlite
+mzci schema
+mzci schema --format json --db /tmp/index.sqlite
 ```
 
 ## Related commands

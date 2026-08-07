@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"os"
@@ -34,7 +34,7 @@ func TestBuildRunsRecordSuccessSkipAndFailure(t *testing.T) {
 	}
 	initGitRepo(t, root, "main.go")
 	db := filepath.Join(t.TempDir(), "index.sqlite")
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -42,13 +42,13 @@ func TestBuildRunsRecordSuccessSkipAndFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		lock.release()
 		t.Fatal(err)
 	}
 	lock.release()
 
-	err = run([]string{"update", "--db", db, "--max-bytes", "12345", root})
+	err = Run([]string{"update", "--db", db, "--max-bytes", "12345", root})
 	if err == nil {
 		t.Fatal("update with incompatible config succeeded, want failure")
 	}
@@ -98,8 +98,8 @@ func TestInitRecordsBuildRun(t *testing.T) {
 	}
 	root := t.TempDir()
 	initGitRepo(t, root)
-	db := filepath.Join(root, ".code-index", "index.sqlite")
-	if err := run([]string{"init", "--db", ".code-index/index.sqlite", root}); err != nil {
+	db := filepath.Join(root, ".manazashi", "index.sqlite")
+	if err := Run([]string{"init", "--db", ".manazashi/index.sqlite", root}); err != nil {
 		t.Fatal(err)
 	}
 	runs, err := loadBuildRuns(db, 10)
@@ -117,7 +117,7 @@ func TestLogsCommandRejectsInvalidArguments(t *testing.T) {
 		{"logs", "--limit", "0"},
 		{"logs", "--format", "yaml"},
 	} {
-		if err := run(args); err == nil {
+		if err := Run(args); err == nil {
 			t.Fatalf("%v succeeded, want failure", args)
 		}
 	}

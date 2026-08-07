@@ -8,7 +8,7 @@ Git-tracked files.
 ## Usage
 
 ```text
-code-index update [--db DB] [--max-bytes N] [--ignore-dir NAME]...
+mzci update [--db DB] [--max-bytes N] [--ignore-dir NAME]...
                   [--adopt] [-v|--verbose] [--format text|json] [ROOT]
 ```
 
@@ -69,9 +69,9 @@ Missing database, incompatible metadata, unsafe ownership/history, invalid
 configuration, Git failure, or SQLite failure is an error.
 
 ```sh
-code-index update
-code-index update --format json /path/to/repo
-code-index update --adopt --db /tmp/shared.sqlite /path/to/repo
+mzci update
+mzci update --format json /path/to/repo
+mzci update --adopt --db /tmp/shared.sqlite /path/to/repo
 ```
 
 ## Related commands

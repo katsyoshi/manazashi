@@ -1,4 +1,4 @@
-package main
+package manazashi
 
 import (
 	"os"
@@ -145,7 +145,7 @@ func TestRebuildSkipsWhenLocked(t *testing.T) {
 	}
 	defer lock.release()
 
-	if err := run([]string{"rebuild", "--db", db, root}); err != nil {
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	var result fullBuildJSONResult
@@ -173,7 +173,7 @@ func TestUpdateSkipsWhenLockedWithoutExistingDB(t *testing.T) {
 	}
 	defer lock.release()
 
-	if err := run([]string{"update", "--db", db, root}); err != nil {
+	if err := Run([]string{"update", "--db", db, root}); err != nil {
 		t.Fatal(err)
 	}
 	var result updateJSONResult
