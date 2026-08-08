@@ -24,9 +24,9 @@ row-set results use empty arrays rather than `null`.
 
 Result shapes are command-specific:
 
-- arrays: `defs`, `outline`, `files`, `show`, `schema`, `metrics`, and `sql`
+- arrays: `defs`, `outline`, `files`, `schema`, `metrics`, and `sql`
 - objects: `version`, `path`, `init`, `rebuild`, `update`, `refs`, `status`,
-  and `stats`
+  `stats`, and `show`; `files --explain` is also an object
 - `help` returns a command-list object or one command metadata object
 - `logs` returns an array of operation objects
 

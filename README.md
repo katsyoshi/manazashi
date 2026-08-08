@@ -73,7 +73,9 @@ For agents and scripts, use JSON output:
 "$SKILL_DIR/exec/mzci" version --format json
 ```
 
-The JSON format emits one object. `modified` is a boolean and `schema_version` is a number; unavailable build information is `null`.
+The JSON format emits one object. `build_modified` is a boolean describing the
+`mzci` build tree and `schema_version` is a number; unavailable build
+information is `null`.
 
 For local development in this repository, build the checked-out source into the
 installed skill:
@@ -310,7 +312,11 @@ mzci metrics --root /path/to/repo lib/config
 mzci metrics --root /path/to/repo --format json
 ```
 
-For `defs`, `outline`, `files`, `show`, and `metrics`, the JSON format emits an array of objects, uses native JSON numbers, preserves nullable fields as `null`, and emits `[]` when there are no rows. `refs` instead emits one object containing `query`, `definitions`, and `candidates` arrays.
+For `defs`, `outline`, `files`, and `metrics`, the JSON format emits an array
+of objects, uses native JSON numbers, preserves nullable fields as `null`, and
+emits `[]` when there are no rows. `show` emits one compact object containing
+the selected path, start line, and source-line array. `refs` emits one object
+containing `query`, `definitions`, and `candidates` arrays.
 
 Show index-wide counts and build metadata:
 

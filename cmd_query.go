@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -55,6 +56,21 @@ type showJSONRow struct {
 	Path string `json:"path"`
 	Line int    `json:"line"`
 	Text string `json:"text"`
+}
+
+type filesExplainJSONResult struct {
+	Query   string         `json:"query"`
+	Found   bool           `json:"found"`
+	Reason  *string        `json:"reason"`
+	Matches []filesJSONRow `json:"matches"`
+}
+
+type showJSONResult struct {
+	Path      *string  `json:"path"`
+	Found     bool     `json:"found"`
+	Reason    *string  `json:"reason"`
+	StartLine int      `json:"start_line"`
+	Lines     []string `json:"lines"`
 }
 
 type metricsSummaryJSONRow struct {
@@ -131,6 +147,7 @@ func cmdDefs(args []string) error {
 	db := fs.String("db", "", "database path")
 	kind := fs.String("kind", "", "symbol kind filter")
 	language := fs.String("language", "", "language filter")
+	pathFilter := fs.String("path", "", "repository-relative path substring filter")
 	limit := fs.Int("limit", 50, "maximum rows")
 	list := fs.Bool("list", false, "list definitions without a query")
 	formatFlag := fs.String("format", "text", "output format: text or json")
@@ -154,6 +171,9 @@ func cmdDefs(args []string) error {
 	}
 	if *language != "" {
 		where += " and language = " + quote(*language)
+	}
+	if *pathFilter != "" {
+		where += " and path like " + quote("%"+filepath.ToSlash(*pathFilter)+"%") + " collate nocase"
 	}
 	var sql string
 	if *list {
@@ -215,6 +235,7 @@ func cmdFiles(args []string) error {
 	status := fs.String("status", "indexed", "file status: indexed, skipped, or all")
 	limit := fs.Int("limit", 100, "maximum rows")
 	list := fs.Bool("list", false, "list indexed files without a query")
+	explain := fs.Bool("explain", false, "explain an empty path result in JSON")
 	formatFlag := fs.String("format", "text", "output format: text or json")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -225,6 +246,9 @@ func cmdFiles(args []string) error {
 	format, err := parseOutputFormat(*formatFlag)
 	if err != nil {
 		return err
+	}
+	if *explain && (*list || format != outputFormatJSON) {
+		return errors.New("files --explain requires --format json and a path query")
 	}
 	where := "1 = 1"
 	if !*list {
@@ -262,6 +286,17 @@ func cmdFiles(args []string) error {
 			SourceEncoding: row.SourceEncoding, EncodingSource: row.EncodingSource,
 			Transcoded: row.Transcoded != 0, SkipReason: row.SkipReason,
 		})
+	}
+	if *explain {
+		result := filesExplainJSONResult{Query: fs.Arg(0), Found: len(rows) > 0, Matches: rows}
+		if !result.Found {
+			_, reason, err := resolveIndexedPath(dbPath, fs.Arg(0))
+			if err != nil {
+				return err
+			}
+			result.Reason = stringPointer(reason)
+		}
+		return writeJSON(os.Stdout, result)
 	}
 	return writeJSON(os.Stdout, rows)
 }
@@ -338,11 +373,63 @@ func cmdShow(args []string) error {
 	if format == outputFormatText {
 		return runSQLitePrint(dbPath, sql)
 	}
+	selected, reason, err := resolveIndexedPath(dbPath, path)
+	if err != nil {
+		return err
+	}
+	result := showJSONResult{Found: selected != nil && selected.Status == "indexed", Reason: stringPointer(reason), StartLine: start, Lines: make([]string, 0)}
+	if selected != nil {
+		result.Path = &selected.Path
+	}
+	if selected == nil || selected.Status != "indexed" {
+		return writeJSON(os.Stdout, result)
+	}
 	rows := make([]showJSONRow, 0)
 	if err := sqliteJSONQuery(dbPath, sql, &rows); err != nil {
 		return err
 	}
-	return writeJSON(os.Stdout, rows)
+	if len(rows) > 0 {
+		result.StartLine = rows[0].Line
+		for _, row := range rows {
+			result.Lines = append(result.Lines, row.Text)
+		}
+	}
+	return writeJSON(os.Stdout, result)
+}
+
+func resolveIndexedPath(db, requested string) (*filesJSONRawRow, string, error) {
+	path := strings.TrimPrefix(filepath.ToSlash(filepath.Clean(requested)), "./")
+	sql := "select path, language, size, index_status, source_encoding, encoding_source, transcoded, skip_reason from files where path = " + quote(path) + " or path like " + quote("%/"+path) + " order by case when path = " + quote(path) + " then 0 else 1 end, length(path), path limit 1"
+	rows := make([]filesJSONRawRow, 0, 1)
+	if err := sqliteJSONQuery(db, sql, &rows); err != nil {
+		return nil, "", err
+	}
+	if len(rows) == 1 {
+		if rows[0].Status == "skipped" {
+			return &rows[0], "skipped", nil
+		}
+		return &rows[0], "", nil
+	}
+	meta, err := loadMeta(db)
+	if err != nil {
+		return nil, "", err
+	}
+	root := meta["root"]
+	if root == "" || filepath.IsAbs(requested) || path == "." || strings.HasPrefix(path, "../") {
+		return nil, "unknown", nil
+	}
+	absPath := filepath.Join(root, filepath.FromSlash(path))
+	if _, err := os.Stat(absPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, "missing", nil
+		}
+		return nil, "unknown", nil
+	}
+	cmd := exec.Command("git", "-C", root, "ls-files", "--error-unmatch", "--", path)
+	if err := cmd.Run(); err != nil {
+		return nil, "untracked", nil
+	}
+	return nil, "excluded", nil
 }
 
 func cmdStats(args []string) error {

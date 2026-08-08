@@ -245,10 +245,41 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 		t.Fatalf("empty files JSON = %#v, want []", noFiles)
 	}
 
-	var shown []showJSONRow
+	var shown showJSONResult
 	decodeRunJSON(t, []string{"show", "--db", db, "--line", "5", "--context", "0", "--format", "json", "main.go"}, &shown)
-	if len(shown) != 1 || shown[0].Path != "main.go" || shown[0].Line != 5 || shown[0].Text != "\tRunTask()" {
+	if !shown.Found || shown.Path == nil || *shown.Path != "main.go" || shown.StartLine != 5 || len(shown.Lines) != 1 || shown.Lines[0] != "\tRunTask()" {
 		t.Fatalf("show JSON = %#v", shown)
+	}
+	var missingShow showJSONResult
+	decodeRunJSON(t, []string{"show", "--db", db, "--line", "1", "--format", "json", "missing.go"}, &missingShow)
+	if missingShow.Found || missingShow.Reason == nil || *missingShow.Reason != "missing" || missingShow.Lines == nil {
+		t.Fatalf("missing show JSON = %#v", missingShow)
+	}
+	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("draft\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var unexplained filesExplainJSONResult
+	decodeRunJSON(t, []string{"files", "--db", db, "--explain", "--format", "json", "notes.txt"}, &unexplained)
+	if unexplained.Found || unexplained.Reason == nil || *unexplained.Reason != "untracked" || unexplained.Matches == nil {
+		t.Fatalf("untracked files explanation = %#v", unexplained)
+	}
+	var found filesExplainJSONResult
+	decodeRunJSON(t, []string{"files", "--db", db, "--explain", "--format", "json", "main.go"}, &found)
+	if !found.Found || found.Reason != nil || len(found.Matches) != 1 {
+		t.Fatalf("found files explanation = %#v", found)
+	}
+	if err := Run([]string{"files", "--db", db, "--explain", "main.go"}); err == nil {
+		t.Fatal("files --explain with text output succeeded, want failure")
+	}
+	var pathDefinitions []defsJSONRow
+	decodeRunJSON(t, []string{"defs", "--db", db, "--path", "missing", "--format", "json", "main"}, &pathDefinitions)
+	if len(pathDefinitions) != 0 {
+		t.Fatalf("path-filtered definitions = %#v, want []", pathDefinitions)
+	}
+	var pathReferences refsJSONResult
+	decodeRunJSON(t, []string{"refs", "--db", db, "--path", "missing", "--format", "json", "RunTask"}, &pathReferences)
+	if pathReferences.Query.Path == nil || *pathReferences.Query.Path != "missing" || len(pathReferences.Definitions) != 0 || len(pathReferences.Candidates) != 0 {
+		t.Fatalf("path-filtered references = %#v", pathReferences)
 	}
 
 	var summary []metricsSummaryJSONRow

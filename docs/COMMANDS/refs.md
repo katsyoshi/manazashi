@@ -13,7 +13,7 @@ graph.
 
 ```text
 mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
-                [--ignore-case] [--limit N] [--format text|json] NAME
+                [--path QUERY] [--ignore-case] [--limit N] [--format text|json] NAME
 ```
 
 - `NAME` is required.
@@ -29,6 +29,8 @@ mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
   those kinds. This matters when the definition belongs to a dependency that
   is not indexed.
 - `--language` restricts definitions and candidates to one indexed language.
+- `--path` restricts definitions and candidates to repository-relative paths
+  containing the query, case-insensitively.
 - `--limit` limits reference candidates, not matching definitions. Its default
   is 100 and it must be positive.
 - `--format` defaults to `text`.
@@ -145,6 +147,7 @@ definitions, and candidates remain distinct.
     "name": "List",
     "kinds": ["class"],
     "language": "java",
+    "path": null,
     "case_sensitive": true,
     "limit": 100
   },

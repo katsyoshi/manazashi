@@ -14,7 +14,7 @@ type buildInfo struct {
 
 type versionJSONResult struct {
 	Commit        *string `json:"commit"`
-	Modified      *bool   `json:"modified"`
+	BuildModified *bool   `json:"build_modified"`
 	SchemaVersion int64   `json:"schema_version"`
 	FileSource    string  `json:"file_source"`
 }

@@ -19,7 +19,7 @@ Text is a `key<TAB>value` table. JSON returns:
 ```json
 {
   "commit": "0123456789abcdef",
-  "modified": false,
+  "build_modified": false,
   "schema_version": 4,
   "file_source": "git-tracked"
 }
@@ -28,13 +28,13 @@ Text is a `key<TAB>value` table. JSON returns:
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `commit` | string or null | VCS revision embedded by Go build information or linker flags |
-| `modified` | boolean or null | Whether the build source tree was modified |
+| `build_modified` | boolean or null | Whether the `mzci` build source tree was modified |
 | `schema_version` | number | Schema version written by this binary |
 | `file_source` | string | Source selection contract, currently `git-tracked` |
 
-`commit` and `modified` are null when build metadata is unavailable. A commit
+`commit` and `build_modified` are null when build metadata is unavailable. A commit
 hash is an identity, not an ordered version number. Text uses `unknown` when no
-commit is available and omits `modified` when it is unknown.
+commit is available and omits `build_modified` when it is unknown.
 
 ## Examples
 

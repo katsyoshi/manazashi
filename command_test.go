@@ -17,6 +17,10 @@ func TestVersionCommand(t *testing.T) {
 	if result.Commit != nil && *result.Commit == "unknown" {
 		t.Fatalf("version JSON commit = %q, want null for unknown", *result.Commit)
 	}
+	jsonOutput := captureRunOutput(t, []string{"version", "--format", "json"})
+	if strings.Contains(jsonOutput, `"modified"`) || !strings.Contains(jsonOutput, `"build_modified"`) {
+		t.Fatalf("version JSON field names = %q", jsonOutput)
+	}
 	if err := Run([]string{"version", "--format", "yaml"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("version with unsupported format error = %v", err)
 	}

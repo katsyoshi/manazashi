@@ -23,18 +23,20 @@ An exact normalized repository-relative path wins. Otherwise a stored path
 ending with the supplied text may match; the shortest path is selected.
 The start is clamped to line 1. Rows sort by line.
 
-An unknown path or a requested range outside stored source is successful and
-returns no rows.
+An unknown path is successful and returns a diagnostic reason. A requested
+range outside stored source has `found: true` and an empty `lines` array.
 
 ## Output
 
-Text is tabular. JSON is an array of:
+Text is tabular. JSON is one compact object:
 
 ```json
-{"path":"cmd.go","line":51,"text":"func Run(args []string) error {"}
+{"path":"cmd.go","found":true,"reason":null,"start_line":51,"lines":["func Run(args []string) error {"]}
 ```
 
-`line` is numeric; empty results are `[]`. Lock warnings use stderr.
+`start_line` is numeric and `lines` is always an array. `reason` is `missing`,
+`untracked`, `skipped`, `excluded`, or `unknown` when `found` is false. Lock
+warnings use stderr.
 
 ## Examples
 

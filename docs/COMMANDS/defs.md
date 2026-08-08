@@ -8,13 +8,15 @@
 
 ```text
 mzci defs [--root ROOT|--db DB] [--kind KIND]
-                [--language LANG] [--limit N] [--list]
+                [--language LANG] [--path QUERY] [--limit N] [--list]
                 [--format text|json] [QUERY]
 ```
 
 - Without `--list`, exactly one `QUERY` is required.
 - With `--list`, `QUERY` is forbidden.
 - `--kind` and `--language` are exact stored-value filters.
+- `--path` restricts rows to repository-relative paths containing the query,
+  case-insensitively.
 - `--limit` defaults to 50.
 - `--format` defaults to `text`.
 

@@ -34,10 +34,10 @@ var commands = []command{
 	{name: "init", usage: "mzci init [--db RELATIVE_DB] [--force] [--format text|json] [ROOT]", summary: "initialize project config and an empty index"},
 	{name: "rebuild", usage: "mzci rebuild [--db DB] [--max-bytes N] [-v|--verbose] [--format text|json] [ROOT]", summary: "atomically rebuild the full index"},
 	{name: "update", usage: "mzci update [--db DB] [--max-bytes N] [--adopt] [-v|--verbose] [--format text|json] [ROOT]", summary: "create or incrementally refresh the index"},
-	{name: "defs", usage: "mzci defs [--root ROOT|--db DB] [--kind KIND] [--language LANG] [--list] [--format text|json] [QUERY]", summary: "list or find symbol definitions"},
+	{name: "defs", usage: "mzci defs [--root ROOT|--db DB] [--kind KIND] [--language LANG] [--path QUERY] [--list] [--format text|json] [QUERY]", summary: "list or find symbol definitions"},
 	{name: "outline", usage: "mzci outline [--root ROOT|--db DB] [--format text|json] PATH", summary: "show symbols in one indexed file"},
-	{name: "refs", usage: "mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG] [--ignore-case] [--limit N] [--format text|json] NAME", summary: "find likely symbol references"},
-	{name: "files", usage: "mzci files [--root ROOT|--db DB] [--language LANG] [--status indexed|skipped|all] [--list] [--format text|json] [QUERY]", summary: "list or find indexed and encoding-skipped files"},
+	{name: "refs", usage: "mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG] [--path QUERY] [--ignore-case] [--limit N] [--format text|json] NAME", summary: "find likely symbol references"},
+	{name: "files", usage: "mzci files [--root ROOT|--db DB] [--language LANG] [--status indexed|skipped|all] [--explain] [--list] [--format text|json] [QUERY]", summary: "list or find indexed and encoding-skipped files"},
 	{name: "sql", usage: "mzci sql [--root ROOT|--db DB] [--format text|json] [SQL]", summary: "run read-only SQL"},
 	{name: "show", usage: "mzci show [--root ROOT|--db DB] --line N [--context N] [--format text|json] PATH", summary: "show indexed source around a line"},
 	{name: "schema", usage: "mzci schema [--root ROOT|--db DB] [--format text|json]", summary: "show index tables and columns"},
@@ -190,7 +190,7 @@ func cmdVersion(args []string) error {
 		}
 		result := versionJSONResult{
 			Commit:        versionCommitPointer(info.commit),
-			Modified:      versionModifiedPointer(info.modified),
+			BuildModified: versionModifiedPointer(info.modified),
 			SchemaVersion: schema,
 			FileSource:    fileSource,
 		}
@@ -199,7 +199,7 @@ func cmdVersion(args []string) error {
 	fmt.Println("key\tvalue")
 	fmt.Printf("commit\t%s\n", info.commit)
 	if info.modified != "" {
-		fmt.Printf("modified\t%s\n", info.modified)
+		fmt.Printf("build_modified\t%s\n", info.modified)
 	}
 	fmt.Printf("schema_version\t%s\n", schemaVersion)
 	fmt.Printf("file_source\t%s\n", fileSource)

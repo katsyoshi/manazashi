@@ -38,7 +38,13 @@ The `version` output identifies the binary by build commit when available. Treat
 
 ## Operating Principles
 
-Read the `Design` section in the repository `README.md` as the source of truth for project direction. In this skill, apply that direction as an operating rule: use Manazashi to reduce how much source enters the LLM context.
+The rules in this section are the complete operating principles required to
+use the skill. Do not fetch or search for a separate Design document before
+starting navigation work.
+
+When modifying Manazashi itself, also read the `Design` section in that
+checkout's root `README.md` as repository-specific contributor context. Its
+absence outside a Manazashi checkout is expected and is never a blocker.
 
 - Query SQLite/FTS before opening files broadly.
 - Prefer a few targeted `show`, `outline`, `defs`, `refs`, `files`, `metrics`, or read-only SQL results over loading whole directories.
@@ -59,6 +65,14 @@ Read the `Design` section in the repository `README.md` as the source of truth f
 Do not inspect `PATH`, call `command -v` or `which`, or use an executable found
 in the target repository. Set `TOOL` to the selected absolute path for the
 remaining commands.
+
+For a shell session with many calls, bind the resolved values once without
+changing the selection rules:
+
+```bash
+export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
+mzci_agent() { "$TOOL" "$@"; }
+```
 
 3. Check the tool build information. Prefer a build commit hash over semver for identifying the binary, but do not infer ordering from the hash without commit history. Treat the hash as compatible only when it is in a known compatible list, or use explicit feature checks when the binary supports them. If the command is unsupported or the build is incompatible for the workflow you need, ask the user to install or configure a compatible `mzci` binary:
 
@@ -181,11 +195,13 @@ Common commands:
 # Find likely symbol references.
 "$TOOL" refs --format json UserRepository
 "$TOOL" refs --kind class --format json UserRepository
+"$TOOL" refs --path linker --format json Writer
 
 # Find files by path.
 "$TOOL" files --list --format json
 "$TOOL" files --format json repository
 "$TOOL" files --status skipped --list --format json
+"$TOOL" files --explain --format json path/to/file.rb
 
 # Inspect the available tables and columns in the agent-oriented format.
 "$TOOL" schema --format json

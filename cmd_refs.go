@@ -28,6 +28,7 @@ type refsQueryJSON struct {
 	Name          string   `json:"name"`
 	Kinds         []string `json:"kinds"`
 	Language      *string  `json:"language"`
+	Path          *string  `json:"path"`
 	CaseSensitive bool     `json:"case_sensitive"`
 	Limit         int      `json:"limit"`
 }
@@ -57,6 +58,7 @@ func cmdRefs(args []string) error {
 	root := fs.String("root", "", "repository root for default database path")
 	db := fs.String("db", "", "database path")
 	language := fs.String("language", "", "language filter")
+	pathFilter := fs.String("path", "", "repository-relative path substring filter")
 	ignoreCase := fs.Bool("ignore-case", false, "match identifiers without case sensitivity")
 	limit := fs.Int("limit", 100, "maximum reference candidates")
 	formatFlag := fs.String("format", "text", "output format: text or json")
@@ -78,7 +80,7 @@ func cmdRefs(args []string) error {
 	}
 	name := fs.Arg(0)
 	normalizedKinds := sortStringsUnique([]string(kinds))
-	result, err := loadRefsResult(dbPath, name, normalizedKinds, *language, !*ignoreCase, *limit)
+	result, err := loadRefsResult(dbPath, name, normalizedKinds, *language, *pathFilter, !*ignoreCase, *limit)
 	if err != nil {
 		return err
 	}
@@ -89,11 +91,12 @@ func cmdRefs(args []string) error {
 	return nil
 }
 
-func loadRefsResult(db, name string, kinds []string, language string, caseSensitive bool, limit int) (refsJSONResult, error) {
+func loadRefsResult(db, name string, kinds []string, language, pathFilter string, caseSensitive bool, limit int) (refsJSONResult, error) {
 	query := refsQueryJSON{
 		Name:          name,
 		Kinds:         append([]string{}, kinds...),
 		Language:      optionalString(language),
+		Path:          optionalString(pathFilter),
 		CaseSensitive: caseSensitive,
 		Limit:         limit,
 	}
@@ -102,7 +105,7 @@ func loadRefsResult(db, name string, kinds []string, language string, caseSensit
 		Definitions: make([]defsJSONRow, 0),
 		Candidates:  make([]refsCandidateJSON, 0),
 	}
-	allDefinitions, err := loadExactDefinitions(db, name, language, caseSensitive)
+	allDefinitions, err := loadExactDefinitions(db, name, language, pathFilter, caseSensitive)
 	if err != nil {
 		return result, err
 	}
@@ -113,7 +116,7 @@ func loadRefsResult(db, name string, kinds []string, language string, caseSensit
 			result.Definitions = append(result.Definitions, definition)
 		}
 	}
-	candidates, err := loadReferenceCandidates(db, name, language, caseSensitive, limit, definitionLines)
+	candidates, err := loadReferenceCandidates(db, name, language, pathFilter, caseSensitive, limit, definitionLines)
 	if err != nil {
 		return result, err
 	}
@@ -121,13 +124,16 @@ func loadRefsResult(db, name string, kinds []string, language string, caseSensit
 	return result, nil
 }
 
-func loadExactDefinitions(db, name, language string, caseSensitive bool) ([]defsJSONRow, error) {
+func loadExactDefinitions(db, name, language, pathFilter string, caseSensitive bool) ([]defsJSONRow, error) {
 	comparison := "name = " + quote(name)
 	if !caseSensitive {
 		comparison += " collate nocase"
 	}
 	if language != "" {
 		comparison += " and language = " + quote(language)
+	}
+	if pathFilter != "" {
+		comparison += " and path like " + quote("%"+pathFilter+"%") + " collate nocase"
 	}
 	sql := "select path, line, kind, name, language, signature from symbols where " + comparison + " order by path, line, column, name"
 	rows := make([]defsJSONRow, 0)
@@ -137,7 +143,7 @@ func loadExactDefinitions(db, name, language string, caseSensitive bool) ([]defs
 	return rows, nil
 }
 
-func loadReferenceCandidates(db, name, language string, caseSensitive bool, limit int, definitionLines map[string]bool) ([]refsCandidateJSON, error) {
+func loadReferenceCandidates(db, name, language, pathFilter string, caseSensitive bool, limit int, definitionLines map[string]bool) ([]refsCandidateJSON, error) {
 	const batchSize = 500
 	result := make([]refsCandidateJSON, 0, limit)
 	for offset := 0; len(result) < limit; offset += batchSize {
@@ -154,6 +160,9 @@ func loadReferenceCandidates(db, name, language string, caseSensitive bool, limi
 		}
 		if language != "" {
 			where += " and files.language = " + quote(language)
+		}
+		if pathFilter != "" {
+			where += " and files.path like " + quote("%"+pathFilter+"%") + " collate nocase"
 		}
 		sql := fmt.Sprintf(
 			"select files.path as path, lines.line as line, files.language as language, lines.text as text from lines join files on files.id = lines.file_id where %s order by files.path, lines.line limit %d offset %d",
