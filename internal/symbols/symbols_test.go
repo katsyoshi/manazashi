@@ -1,6 +1,9 @@
 package symbols
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -103,6 +106,59 @@ end
 	assertSymbol(t, symbols, "module", "Sample", 1)
 	assertSymbol(t, symbols, "class", "Worker", 2)
 	assertSymbol(t, symbols, "method", "perform", 3)
+}
+
+func TestRubyBatchMatchesSingleFileExtraction(t *testing.T) {
+	source := `module Sample
+  class Worker
+    CONST = 1
+
+    def self.build
+    end
+
+    def quoter.quote(value)
+    end
+
+    def face_with_to_a.to_a
+    end
+
+    def perform!
+    end
+  end
+end
+`
+	path := filepath.Join(t.TempDir(), "worker.rb")
+	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	batch, ok := ExtractRubyBatch([]RubyBatchFile{{Path: "worker.rb", SourcePath: path}})
+	if !ok {
+		t.Skip("RubyVM::AbstractSyntaxTree batch extraction is unavailable")
+	}
+	lines := splitLines(source)
+	got := ExtractWithRubyBatch(batch, "worker.rb", "ruby", lines)
+	want := Extract("worker.rb", "ruby", lines)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("batch symbols = %#v, want %#v", got, want)
+	}
+}
+
+func TestRubyBatchIgnoresQualifiedConstantWritesLikeSingleFileExtraction(t *testing.T) {
+	source := "::Sample::VALUE = 1\nself::OTHER = 2\n"
+	path := filepath.Join(t.TempDir(), "constants.rb")
+	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	batch, ok := ExtractRubyBatch([]RubyBatchFile{{Path: "constants.rb", SourcePath: path}})
+	if !ok {
+		t.Skip("RubyVM::AbstractSyntaxTree batch extraction is unavailable")
+	}
+	lines := splitLines(source)
+	got := ExtractWithRubyBatch(batch, "constants.rb", "ruby", lines)
+	want := Extract("constants.rb", "ruby", lines)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("batch symbols = %#v, want %#v", got, want)
+	}
 }
 
 func TestParseRubyPrismDumpSymbols(t *testing.T) {

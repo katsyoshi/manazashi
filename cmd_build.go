@@ -402,6 +402,11 @@ func runRebuild(args []string) (resultErr error) {
 		}
 	}()
 	fts := hasFTS5()
+	ignored := cloneIgnored(options.extraIgnored)
+	rubyBatch, err := prepareRubyBatch(root, ignored, options.maxBytes, nil)
+	if err != nil {
+		return err
+	}
 	writer, wait, err := sqliteWriter(tmpDB)
 	if err != nil {
 		return err
@@ -414,7 +419,6 @@ func runRebuild(args []string) (resultErr error) {
 		}
 	}()
 	writeSchema(writer, fts)
-	ignored := cloneIgnored(options.extraIgnored)
 	var fileCount, symbolCount, lineCount int
 	var codeLineCount, commentLineCount, blankLineCount int
 	var transcodedCount, encodingSkippedCount int
@@ -422,7 +426,7 @@ func runRebuild(args []string) (resultErr error) {
 	nextFileID := 1
 	nextSymbolID := 1
 	err = walkGitTrackedFiles(root, ignored, options.maxBytes, func(path string, info fs.FileInfo) error {
-		index, err := scanFileIndex(root, path, info, options.config())
+		index, err := scanFileIndexWithRubyBatch(root, path, info, options.config(), rubyBatch)
 		if err != nil {
 			return nil
 		}
@@ -536,6 +540,11 @@ func runUpdate(args []string) (resultErr error) {
 		return err
 	}
 	candidates, candidateOnly := updateCandidatePaths(root, existing, meta)
+	ignored := cloneIgnored(options.extraIgnored)
+	rubyBatch, err := prepareRubyBatch(root, ignored, options.maxBytes, candidates)
+	if err != nil {
+		return err
+	}
 	writer, wait, err := sqliteWriter(db)
 	if err != nil {
 		return err
@@ -550,14 +559,13 @@ func runUpdate(args []string) (resultErr error) {
 	writeSQL(writer, ".bail on\n")
 	writeSQL(writer, ".timeout 5000\n")
 	writeSQL(writer, "begin immediate;\n")
-	ignored := cloneIgnored(options.extraIgnored)
 	seen := map[string]bool{}
 	var added, updated, deleted int
 	var symbolCount int
 	var transcodedCount, encodingSkippedCount int
 	diagnostics := []encodingDiagnostic{}
 	err = walkGitTrackedFileSet(root, ignored, options.maxBytes, candidates, func(path string, info fs.FileInfo) error {
-		index, err := scanFileIndex(root, path, info, options.config())
+		index, err := scanFileIndexWithRubyBatch(root, path, info, options.config(), rubyBatch)
 		if err != nil {
 			return nil
 		}
