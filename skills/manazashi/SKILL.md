@@ -5,229 +5,91 @@ description: Build and use a local SQLite index for code navigation instead of a
 
 # Manazashi
 
-## Overview
+Use Manazashi as the first search surface for codebase navigation. Re-query the
+index as needed instead of retaining a deep codebase context. Treat matches as
+navigation candidates and inspect source before making behavioral claims.
 
-Use Manazashi as the first search surface for codebase navigation. Prefer SQL-backed queries for locating files, definitions, methods, classes, relevant source lines, metrics, and index status.
+When modifying Manazashi itself, also read the `Design` section in the
+checkout's root `README.md`. Its absence in other repositories is expected.
 
-Use the index as retrievable navigation memory. Re-query it as the task needs
-deeper detail instead of depending on a deep codebase context remaining in the
-model throughout the task.
+## Select the executable
 
-Use only an explicitly selected `mzci` binary. Prefer the absolute path in
-`MANAZASHI_BIN` when it is set; otherwise use `exec/mzci` under the directory
-containing this `SKILL.md`. Never search `PATH`, run a repository-local binary,
-or select any other fallback. If the selected file is missing or not
-executable, stop and ask the user to install or configure Manazashi.
-
-## Install Guidance
-
-The default installation belongs under the installed skill directory:
-
-```bash
-SKILL_DIR=/path/to/installed/skills/manazashi
-mkdir -p "$SKILL_DIR/exec"
-GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/manazashi/cmd/mzci@latest
-export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
-"$SKILL_DIR/exec/mzci" version
-```
-
-Set `MANAZASHI_BIN` in the agent runtime only to override the bundled binary
-with another trusted executable. A writable `MANAZASHI_CACHE_DIR` avoids
-repeating cache configuration in sandboxed sessions.
-
-For local development of this repository, building the checked-out source with
-`go build -o "$SKILL_DIR/exec/mzci" ./cmd/mzci` is also acceptable.
-
-The `version` output identifies the binary by build commit when available. Treat the commit hash as an identity, not as an ordered version, unless you have commit-history context.
-
-## Operating Principles
-
-The rules in this section are the complete operating principles required to
-use the skill. Do not fetch or search for a separate Design document before
-starting navigation work.
-
-When modifying Manazashi itself, also read the `Design` section in that
-checkout's root `README.md` as repository-specific contributor context. Its
-absence outside a Manazashi checkout is expected and is never a blocker.
-
-- Query SQLite/FTS before opening files broadly.
-- Prefer a few targeted `show`, `outline`, `defs`, `refs`, `files`, `metrics`, or read-only SQL results over loading whole directories.
-- Re-query the index when prior details are no longer in context rather than
-  preserving broad source solely for later navigation.
-- Treat indexed matches as navigation candidates and open source before making behavioral claims.
-
-## Workflow
-
-1. Resolve the target repository root.
-2. Select the tool using this fixed precedence:
+Resolve the target repository root, then select `mzci` using this precedence:
 
 | Condition | Tool |
 | --- | --- |
-| `MANAZASHI_BIN` is set to an absolute path | That exact path |
-| `MANAZASHI_BIN` is set to a relative path | Stop and ask the user to configure an absolute path |
+| `MANAZASHI_BIN` is an absolute path | That exact path |
+| `MANAZASHI_BIN` is relative | Stop and request an absolute path |
 | `MANAZASHI_BIN` is unset | `exec/mzci` beside this `SKILL.md` |
-| The selected file is missing or not executable | Stop and ask the user to install or configure Manazashi |
+| The selected file is missing or not executable | Stop and request installation or configuration |
 
-Do not inspect `PATH`, call `command -v` or `which`, or use an executable found
-in the target repository. Set `TOOL` to the selected absolute path for the
-remaining commands.
+Never discover a binary from `PATH` or the target repository as a fallback.
+Bind the selected absolute path to `TOOL` for subsequent commands.
 
-For a shell session with many calls, bind the resolved values once without
-changing the selection rules:
-
-```bash
-export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
-mzci_agent() { "$TOOL" "$@"; }
-```
-
-3. Check the tool build information. Prefer a build commit hash over semver for identifying the binary, but do not infer ordering from the hash without commit history. Treat the hash as compatible only when it is in a known compatible list, or use explicit feature checks when the binary supports them. If the command is unsupported or the build is incompatible for the workflow you need, ask the user to install or configure a compatible `mzci` binary:
+Check the selected build before using it:
 
 ```bash
 "$TOOL" version --format json
 ```
 
-4. In sandboxed agent sessions, prefer a writable cache directory unless the user gave a DB path:
+Treat a build commit as an identity, not an ordered version. Use known
+compatibility information or explicit feature checks; if the required command
+is unavailable, request a compatible binary.
+
+## Maintain the index
+
+Unless the user supplied a DB path, use a writable cache directory in
+sandboxed sessions:
 
 ```bash
 export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
 ```
 
-5. Build or refresh the index before substantial search work. Prefer `update` for an existing index; it refreshes changed Git-tracked files and removes files no longer tracked by Git:
+Refresh the index before substantial navigation work:
 
 ```bash
 "$TOOL" update --format json
-"$TOOL" update -v --format json
 ```
 
-For a repository that has not been initialized, create the project
-configuration and empty database, then load its content:
+If the repository has not been initialized, run `init` and then `update`. Use
+`status --format json` when freshness, locks, or compatibility matter. Inspect
+`components`, `update_compatible`, `update_requires_adopt`,
+`update_rebuild_required`, and `update_blocker` when present.
 
-```bash
-"$TOOL" init --format json
-"$TOOL" update --format json
-```
+- Run `rebuild` when status reports incompatible schema, file source, hashing,
+  or indexing configuration.
+- Run `rebuild` for another checkout path or unknown Git history unless the
+  user explicitly wants the index adopted; only then use `update --adopt`.
+- If `status` is unsupported, continue with query commands and rely on rebuild
+  output.
+- Use `logs --format json` to diagnose failed or skipped index operations.
 
-If `update` reports incompatible schema, file source, hash, or indexing config settings, run `rebuild`. If it reports another checkout path or unknown Git history, run `rebuild` unless the user explicitly wants this DB to belong to the current checkout; only then use `update --adopt`.
+Index Git-tracked files only unless the task explicitly changes that contract.
+Run `update` after editing tracked files. Run `rebuild` after schema, tool, or
+indexing-option changes that require every file to be refreshed.
 
-6. Check status when lock or freshness may matter:
+## Navigate
 
-```bash
-"$TOOL" status --format json
-```
-
-Use `components`, `update_compatible`, `update_requires_adopt`, `update_rebuild_required`, and `update_blocker` from `status` to confirm the completed index state and decide whether to run normal `update`, ask before `update --adopt`, or run `rebuild`.
-
-If `status` is unsupported, continue with query commands and rely on rebuild output.
-
-7. Search definitions, references, file outlines, and files through the index:
+Prefer dedicated commands over raw SQL:
 
 ```bash
 "$TOOL" defs --format json parse_config
 "$TOOL" refs --format json parse_config
 "$TOOL" outline --format json path/to/file.go
 "$TOOL" files --format json config
+"$TOOL" show --line 42 --context 20 --format json path/to/file.go
 ```
 
-8. Run raw read-only SQL for precise lookup:
+Use `defs` and `outline` for definitions, `refs` for likely references, `files`
+for paths and indexing diagnostics, and `show` for bounded source context. Use
+`schema`, `stats`, or `metrics` when the task needs index structure or counts.
+Use `help --format json COMMAND` for exact command options instead of relying
+on a copied command catalog.
 
-```bash
-"$TOOL" sql --format json \
-  "select path, line, kind, name, signature from symbols where name like '%parse%' order by path, line limit 50"
-```
+If dedicated commands cannot express a query, use read-only SQL. Read
+[`references/query-patterns.md`](references/query-patterns.md) before composing
+raw SQL. Prefer bounded results and join `lines` to `files` for paths.
 
-9. Show source around indexed lines:
-
-```bash
-"$TOOL" show --line 42 --context 20 --format json lib/config.rb
-```
-
-Use a wider `--context` when inspecting a method body so the indexed source can
-remain the primary reading surface. Reduce it for a narrow confirmation or
-increase it when the surrounding control flow is needed.
-
-10. Run `update` after editing tracked files that affect search results. Use `rebuild` after tool upgrades, schema changes, or option changes that should refresh every tracked file.
-
-## Search Policy
-
-- Prefer this skill's SQLite index before using `grep`, `rg`, `find`, or broad shell text search for code navigation.
-- Use ordinary shell commands for non-search tasks such as running tests, checking git state, or listing a known directory.
-- Treat the generated index as a navigation aid, not as proof. Open matched files before making behavioral claims or edits.
-- If the repository already provides a stronger source database, tags database, LSP index, or project-specific SQLite schema, prefer that existing source and use this skill's query patterns against it where practical.
-- If the script misses a symbol because of language syntax, use raw SQL against indexed `lines` or `files_fts` before falling back to text search.
-- If query commands warn that rebuild is in progress, use the previous index result as a candidate and rebuild later when exact freshness matters.
-
-## Commands
-
-Common commands:
-
-```bash
-# Show command help.
-"$TOOL" help
-"$TOOL" help update
-"$TOOL" help --format json
-"$TOOL" help --format json update
-
-# Print the default database path for a root.
-"$TOOL" path --format json
-
-# Show build information for compatibility checks.
-"$TOOL" version --format json
-
-# Create .manazashi.toml and an empty schema; run update next.
-"$TOOL" init --format json
-
-# Atomic full rebuild from Git-tracked files. Current CLI skips successfully if another operation holds the lock.
-"$TOOL" rebuild --format json
-
-# Incrementally refresh an existing index from Git-tracked files.
-"$TOOL" update --format json
-
-# Adopt an index from another checkout path or Git history only when intentional.
-"$TOOL" update --adopt --format json
-
-# Show lock state and metadata from the last successful update in the agent-oriented format.
-"$TOOL" status --format json
-
-# Show recent successful, failed, and skipped build runs.
-"$TOOL" logs --format json
-
-# Find symbols.
-"$TOOL" defs --list --format json
-"$TOOL" defs --format json UserRepository
-
-# Show symbols in one file.
-"$TOOL" outline --format json lib/user_repository.rb
-
-# Find likely symbol references.
-"$TOOL" refs --format json UserRepository
-"$TOOL" refs --kind class --format json UserRepository
-"$TOOL" refs --path linker --format json Writer
-
-# Find files by path.
-"$TOOL" files --list --format json
-"$TOOL" files --format json repository
-"$TOOL" files --status skipped --list --format json
-"$TOOL" files --explain --format json path/to/file.rb
-
-# Inspect the available tables and columns in the agent-oriented format.
-"$TOOL" schema --format json
-
-# Show index-wide counts and build metadata.
-"$TOOL" stats --format json
-
-# Show enough source around an indexed line to inspect a method body.
-"$TOOL" show --line 42 --context 20 --format json lib/user_repository.rb
-```
-
-Commands run inside a Git work tree discover its repository root automatically. The default database lives under `MANAZASHI_CACHE_DIR` when set. Otherwise it uses `$XDG_CACHE_HOME/manazashi` or `~/.cache/manazashi`, keyed by the repository root path. A project `.manazashi.toml` may override the database with a repository-relative `db`; pass `--db path/to/index.sqlite` for an explicit one-run override.
-
-Build results include transcoded and encoding-skipped counts. Use `-v` or
-`--verbose` for per-file encoding diagnostics. The normal `files` view contains
-searchable files; use `files --status skipped` to inspect source files retained
-as metadata because their encoding could not be determined or converted.
-
-Use `logs --format json` when diagnosing a failed or skipped `init`, `rebuild`, or `update`. Operation logs live in a separate `<index-db>.logs.sqlite` sidecar and therefore survive atomic replacement of the index DB.
-
-## References
-
-Read `references/query-patterns.md` when raw SQL is needed, when the built-in `defs`, `refs`, or `files` commands are not enough, or when adapting this workflow to another code index. `refs --format json` returns one object with `query`, `definitions`, and lexical `candidates`. Use `outline` for file structure and `show` for context around a selected candidate.
+Do not use `grep`, `rg`, or `find` for code navigation until indexed commands
+and read-only SQL are insufficient. Ordinary shell commands remain appropriate
+for non-navigation work such as tests and Git status.
