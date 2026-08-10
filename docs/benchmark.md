@@ -36,17 +36,30 @@ Targets are selected from each index rather than fixed across repositories:
 
 ## Rails
 
-Measured on 2026-07-24 (UTC):
+Repository snapshot:
 
 - Rails `main`: `b6cb9ea7657ea46eb35fdd73b9b2174f7a93a8c0`
-- manazashi: `0a55e39fa7366beca0272457547b05f987eeab8b`
 - Git-tracked files: 4,971
 - Indexed files: 4,854
 - Indexed lines: 684,668
 - Symbols: 52,304
-- Full rebuild: 92.52 seconds
-- No-change incremental update: 0.04 seconds
 - SQLite database size: 128 MB
+
+Build measurements were refreshed on 2026-08-10 (UTC) with manazashi
+`e6d1ad2`. Ruby symbols are extracted by one embedded batch process per index
+operation, with the existing per-file extractor retained as a fallback.
+
+- Full rebuild: 3.94 seconds
+- No-change incremental update: 0.04 seconds
+
+For comparison, the previous implementation started a Ruby parser process for
+each Ruby file and took 92.95 seconds to rebuild the same checkout. The batch
+implementation was approximately 23.6 times faster. A bidirectional SQLite
+`EXCEPT` comparison over path, language, kind, name, start and end positions,
+signature, and context found no symbol differences between the two indexes.
+
+The query measurements below were recorded on 2026-07-24 (UTC) with manazashi
+`0a55e39fa7366beca0272457547b05f987eeab8b`:
 
 | Command | Selected target | Results | Median | p95 |
 | --- | --- | ---: | ---: | ---: |
@@ -62,7 +75,7 @@ Measured on 2026-07-24 (UTC):
 ### Rails merge-history updates
 
 Measured on 2026-08-10 (UTC) with Manazashi
-`5053ef8ef4d3da3840dccef31bdd7b07338e6131`, schema 4, and FTS5 enabled.
+`e6d1ad2e05e8466524b3b718bf848556e23f217b`, schema 4, and FTS5 enabled.
 The Rails history ended at the same `b6cb9ea7` revision used above.
 
 This benchmark replays first-parent merge commits to approximate changes as
@@ -79,16 +92,16 @@ filesystem caches.
 
 | Window | Merges | Baseline rebuild | Update total | Update median | Update p95 | Update max | Changed files median | Changed files p95 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2008–2010 early history | 105 | 5.12 s | 104.42 s | 572 ms | 3.202 s | 4.469 s | 43 | 422 |
-| 2011 year-end | 100 | 9.17 s | 11.62 s | 80 ms | 261 ms | 878 ms | 3 | 18 |
-| 2014 year-end | 100 | 11.00 s | 10.78 s | 71 ms | 311 ms | 728 ms | 2 | 19 |
-| 2017 year-end | 100 | 13.46 s | 13.23 s | 95 ms | 308 ms | 899 ms | 2 | 13 |
-| 2020 year-end | 100 | 16.74 s | 12.07 s | 97 ms | 235 ms | 913 ms | 2 | 11 |
-| 2023 year-end | 100 | 19.06 s | 13.67 s | 90 ms | 267 ms | 2.014 s | 2 | 10 |
-| 2026 latest | 100 | 21.06 s | 15.03 s | 119 ms | 407 ms | 608 ms | 2 | 13 |
+| 2008–2010 early history | 105 | 1.12 s | 84.91 s | 427 ms | 2.412 s | 3.675 s | 43 | 422 |
+| 2011 year-end | 100 | 1.85 s | 13.55 s | 109 ms | 260 ms | 760 ms | 3 | 18 |
+| 2014 year-end | 100 | 2.16 s | 12.54 s | 97 ms | 295 ms | 715 ms | 2 | 19 |
+| 2017 year-end | 100 | 2.35 s | 14.57 s | 116 ms | 295 ms | 749 ms | 2 | 13 |
+| 2020 year-end | 100 | 2.84 s | 14.01 s | 128 ms | 252 ms | 921 ms | 2 | 11 |
+| 2023 year-end | 100 | 3.33 s | 15.11 s | 119 ms | 277 ms | 1.587 s | 2 | 10 |
+| 2026 latest | 100 | 3.88 s | 16.65 s | 140 ms | 393 ms | 579 ms | 2 | 13 |
 
 Across the windows, Pearson correlation between changed-file count and update
-time ranges from 0.953 to 0.985. Normal merge updates remain small as the
+time ranges from 0.966 to 0.988. Normal merge updates remain small as the
 repository grows; the early-history outliers are large branch integrations of
 hundreds of files rather than current-style small pull requests.
 
