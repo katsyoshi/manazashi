@@ -24,17 +24,10 @@ Resolve the target repository root, then select `mzci` using this precedence:
 | The selected file is missing or not executable | Stop and request installation or configuration |
 
 Never discover a binary from `PATH` or the target repository as a fallback.
-Bind the selected absolute path to `TOOL` for subsequent commands.
-
-Check the selected build before using it:
-
-```bash
-"$TOOL" version --format json
-```
-
-Treat a build commit as an identity, not an ordered version. Use known
-compatibility information or explicit feature checks; if the required command
-is unavailable, request a compatible binary.
+Bind the selected absolute path to `TOOL` for subsequent commands. Do not run
+`version` as a preflight; use it only to diagnose an unsupported command or
+suspected compatibility problem. Treat its build commit as an identity, not an
+ordered version.
 
 ## Maintain the index
 
@@ -45,28 +38,21 @@ sandboxed sessions:
 export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
 ```
 
-Refresh the index before substantial navigation work:
+Do not run `status` or `update` before normal navigation. Query the existing
+index first. If a query returns no candidates, run `update --format json` once
+and repeat the same query. If the retry is also empty, continue with the normal
+fallbacks or report that the completed index has no match.
 
-```bash
-"$TOOL" update --format json
-```
+Also update when a command explicitly reports stale index state. If update
+reports incompatible schema, file source, hashing, or indexing configuration,
+run `rebuild`. For another checkout path or unknown Git history, rebuild unless
+the user explicitly wants that index adopted; only then use `update --adopt`.
+Use `status` or `logs` only to diagnose an unclear or failed operation.
 
-If the repository has not been initialized, run `init` and then `update`. Use
-`status --format json` when freshness, locks, or compatibility matter. Inspect
-`components`, `update_compatible`, `update_requires_adopt`,
-`update_rebuild_required`, and `update_blocker` when present.
-
-- Run `rebuild` when status reports incompatible schema, file source, hashing,
-  or indexing configuration.
-- Run `rebuild` for another checkout path or unknown Git history unless the
-  user explicitly wants the index adopted; only then use `update --adopt`.
-- If `status` is unsupported, continue with query commands and rely on rebuild
-  output.
-- Use `logs --format json` to diagnose failed or skipped index operations.
-
-Index Git-tracked files only unless the task explicitly changes that contract.
-Run `update` after editing tracked files. Run `rebuild` after schema, tool, or
-indexing-option changes that require every file to be refreshed.
+If no index exists, request that the user initialize and update it. Index
+Git-tracked files only unless the task explicitly changes that contract. After
+editing, update only when further indexed navigation depends on the changed
+content or the task requires leaving a fresh index.
 
 ## Navigate
 
