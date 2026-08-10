@@ -122,6 +122,10 @@ func TestRubyBatchMatchesSingleFileExtraction(t *testing.T) {
     def face_with_to_a.to_a
     end
 
+    def d; end
+
+    def e; end
+
     def perform!
     end
   end

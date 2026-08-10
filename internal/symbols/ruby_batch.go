@@ -115,7 +115,7 @@ func rubyBatchSymbols(path, language string, lines []string, nodes []rubyBatchNo
 			if node.Name == "" {
 				continue
 			}
-			column := rubyNameColumn(lines, node.Name, node.Line, node.Column)
+			column := rubyMethodNameColumn(lines, node.Name, node.Line, node.Column)
 			name := node.Name
 			if node.Receiver {
 				column = rubyReceiverMethodNameColumn(lines, node.Name, node.Line, node.Column)
@@ -138,6 +138,24 @@ func rubyBatchSymbols(path, language string, lines []string, nodes []rubyBatchNo
 		out = append(out, symbol)
 	}
 	return out
+}
+
+func rubyMethodNameColumn(lines []string, name string, line, startColumn int) int {
+	source := sourceLine(lines, line)
+	if startColumn > len(source) {
+		return 0
+	}
+	segment := source[startColumn:]
+	defIndex := strings.Index(segment, "def")
+	if defIndex < 0 {
+		return 0
+	}
+	nameStart := startColumn + defIndex + len("def")
+	index := strings.Index(source[nameStart:], name)
+	if index < 0 {
+		return 0
+	}
+	return nameStart + index + 1
 }
 
 func rubyReceiverMethodNameColumn(lines []string, name string, line, startColumn int) int {
