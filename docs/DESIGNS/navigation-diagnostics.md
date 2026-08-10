@@ -2,10 +2,14 @@
 
 ## Motivation
 
-Navigation commands should keep agent context small while making an empty
-result actionable. An empty indexed row set alone cannot distinguish a typo
-from an untracked, excluded, or encoding-skipped file. Short symbol names also
-need a lightweight way to avoid unrelated namespaces in other paths.
+Navigation commands should let an agent recover the next relevant fact without
+keeping a deep codebase context active throughout a task. They return compact
+results so the agent can progressively retrieve detail rather than load broad
+source context up front.
+
+An empty indexed row set alone cannot distinguish a typo from an untracked,
+excluded, or encoding-skipped file. Short symbol names also need a lightweight
+way to avoid unrelated namespaces in other paths.
 
 ## Path narrowing
 

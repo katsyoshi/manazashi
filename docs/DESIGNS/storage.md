@@ -1,23 +1,18 @@
 # Storage
 
+The schema responsibilities, data ownership, stable identity, invariants, and
+intentional FTS duplication are documented in
+[`db_schema.md`](db_schema.md). Exact executable columns and constraints live
+in the embedded SQL. This document covers storage policy around that schema.
+
 ## Main database
 
-The current schema version is 4. The main tables are:
-
-- `meta`: string key/value metadata describing schema, root, build identity,
-  timestamps, operation, and Git state
-- `components`: completed state and update time for `files`, `lines`,
-  `symbols`, `metrics`, and `fts`
-- `files`: path, language, raw size/hash, indexing status, and encoding
-  diagnostics
-- `lines`: normalized UTF-8 source, keyed by file and one-based line number
-- `symbols`: extracted definitions with source position, signature, and nearby
-  context
-- `file_metrics`: per-file code, comment, blank, line, and symbol counts
-
-Foreign keys connect line, symbol, and metric rows to `files`. Rebuild assigns
-new internal IDs; consumers must use stable fields such as path and source
-position rather than persisting row IDs across rebuilds.
+The current schema version is 4. The main database is one completed,
+replaceable navigation snapshot. It contains canonical indexed source,
+extracted navigation facts, derived metrics, compatibility metadata, and
+optional search projections. Rebuild may assign new internal IDs; consumers
+must use stable fields such as path and source position instead of persisting
+row IDs.
 
 ## Optional FTS
 
@@ -25,6 +20,10 @@ If the installed `sqlite3` supports FTS5, construction also creates:
 
 - `files_fts(path, language, content)`
 - `symbols_fts(name, kind, language, path, signature, context)`
+
+`files_fts.content` is an intentional agent-oriented search cache rather than
+the canonical source representation. See [`db_schema.md`](db_schema.md) for
+the rationale and query-boundary guidance.
 
 FTS availability is stored as part of the index identity. An environment whose
 FTS5 support differs from the environment that built the database must rebuild

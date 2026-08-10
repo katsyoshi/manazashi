@@ -3,8 +3,14 @@
 ## Purpose
 
 `manazashi` is a small local retrieval layer for source navigation. It turns
-Git-tracked source files into a rebuildable SQLite database so humans and
-agents can narrow a search before reading source.
+Git-tracked source files into a rebuildable SQLite database so repository
+navigation state does not have to remain in a deep model-side context
+throughout a task.
+
+Queries expose progressively deeper information: compact file or symbol
+candidates first, structural and lexical relationships next, and selected
+source only when needed. Small results are a means to this end rather than the
+entire design goal.
 
 The index is a navigation aid, not authoritative program analysis. Callers
 must inspect source before making behavioral claims.

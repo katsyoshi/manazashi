@@ -23,9 +23,15 @@ be committed. Machine-specific paths and commands can be kept in
 
 ## Design
 
-`manazashi` is a lightweight retrieval layer for agents, not a language server. It is designed to reduce how much source an LLM needs to read, not to expand context.
+`manazashi` is a lightweight retrieval layer for agents, not a language server.
+It externalizes repository navigation state into a rebuildable local index so
+an agent does not need to keep a deep model-side context of the codebase
+throughout a task.
 
-- Query the local index first, then read only the source needed for the task.
+- Retrieve compact candidates first, then progressively read deeper source
+  context only when the task needs it.
+- Keep navigation state reproducible in the index rather than depending on a
+  long-lived model context.
 - Keep the index rebuildable and local.
 - Treat Markdown as documentation or notes, not as the index database.
 
@@ -39,6 +45,25 @@ against real-world repositories.
 ## Install
 
 `manazashi` requires `git`, the `sqlite3` command, and Go for installation.
+
+### Development environment
+
+Development and verification use portable command-line tools rather than a
+specific operating system or shell. A contributor checkout should provide:
+
+- Go 1.22 or newer, matching `go.mod`
+- Git
+- the `sqlite3` command
+- standard shell utilities, including `grep`, for human-oriented source search
+
+SQLite with FTS5 enabled is recommended so the optional full-text tables and
+their tests are exercised. Ruby is optional and enables Ruby symbol
+extraction. `iconv` is optional and enables configured legacy-encoding
+fallbacks and their tests. Tests that require an unavailable optional tool may
+skip the corresponding coverage.
+
+The normal verification commands are documented in `AGENTS.md`: run `gofmt`
+on edited Go files, followed by `go test ./...` and `go vet ./...`.
 
 Choose the installed skill directory for your agent runtime. This is the directory that contains `SKILL.md`:
 

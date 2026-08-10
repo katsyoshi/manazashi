@@ -9,6 +9,10 @@ description: Build and use a local SQLite index for code navigation instead of a
 
 Use Manazashi as the first search surface for codebase navigation. Prefer SQL-backed queries for locating files, definitions, methods, classes, relevant source lines, metrics, and index status.
 
+Use the index as retrievable navigation memory. Re-query it as the task needs
+deeper detail instead of depending on a deep codebase context remaining in the
+model throughout the task.
+
 Use only an explicitly selected `mzci` binary. Prefer the absolute path in
 `MANAZASHI_BIN` when it is set; otherwise use `exec/mzci` under the directory
 containing this `SKILL.md`. Never search `PATH`, run a repository-local binary,
@@ -48,6 +52,8 @@ absence outside a Manazashi checkout is expected and is never a blocker.
 
 - Query SQLite/FTS before opening files broadly.
 - Prefer a few targeted `show`, `outline`, `defs`, `refs`, `files`, `metrics`, or read-only SQL results over loading whole directories.
+- Re-query the index when prior details are no longer in context rather than
+  preserving broad source solely for later navigation.
 - Treat indexed matches as navigation candidates and open source before making behavioral claims.
 
 ## Workflow

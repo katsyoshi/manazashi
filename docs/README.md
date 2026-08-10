@@ -55,8 +55,10 @@ output, and non-goals.
   compatibility, status, and operation logs
 - [Configuration](DESIGNS/configuration.md): root and database resolution,
   configuration scopes, defaults, and command-line overrides
-- [Storage](DESIGNS/storage.md): SQLite schema, metadata, optional FTS, and data
-  sensitivity
+- [Storage](DESIGNS/storage.md): storage policy, metadata, optional FTS, and
+  data sensitivity
+- [Database schema intent](DESIGNS/db_schema.md): responsibilities, invariants,
+  and the agent-oriented FTS rationale
 - [Symbols](DESIGNS/symbols.md): definition extraction, symbol kinds, and the roles of
   `defs`, `outline`, and `refs`
 - [CLI contract](DESIGNS/cli.md): output formats, errors, stable results, and command
