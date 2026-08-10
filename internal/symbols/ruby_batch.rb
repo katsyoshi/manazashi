@@ -1,6 +1,8 @@
 require "json"
 
 exit 2 unless defined?(RubyVM::AbstractSyntaxTree)
+major, minor = RUBY_VERSION.split(".", 3).first(2).map(&:to_i)
+exit 2 if major < 3 || (major == 3 && minor < 4)
 
 def node_record(node)
   type = node.type.to_s

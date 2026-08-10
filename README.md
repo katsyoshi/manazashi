@@ -57,8 +57,9 @@ specific operating system or shell. A contributor checkout should provide:
 - standard shell utilities, including `grep`, for human-oriented source search
 
 SQLite with FTS5 enabled is recommended so the optional full-text tables and
-their tests are exercised. Ruby is optional and enables Ruby symbol
-extraction. `iconv` is optional and enables configured legacy-encoding
+their tests are exercised. Ruby 3.4 or newer is optional and enables batched
+Ruby symbol extraction; older or unavailable Ruby installations use the
+fallback extractors. `iconv` is optional and enables configured legacy-encoding
 fallbacks and their tests. Tests that require an unavailable optional tool may
 skip the corresponding coverage.
 

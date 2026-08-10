@@ -9,8 +9,11 @@ permissions:
 
 jobs:
   test:
-    name: Test
+    name: Test (Ruby ${{ matrix.ruby }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: ["3.4", "4.0"]
 
     steps:
       - name: Checkout
@@ -21,6 +24,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
 
       - name: Install sqlite3
         run: |
