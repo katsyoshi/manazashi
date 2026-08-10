@@ -6,8 +6,9 @@ description: Build and use a local SQLite index for code navigation instead of a
 # Manazashi
 
 Use Manazashi as the first search surface for codebase navigation. Re-query the
-index as needed instead of retaining a deep codebase context. Treat matches as
-navigation candidates and inspect source before making behavioral claims.
+index as needed instead of retaining a deep codebase context. Treat all indexed
+results, including `show`, as snapshot candidates. Read the live checkout
+before editing or making behavioral claims.
 
 When modifying Manazashi itself, also read the `Design` section in the
 checkout's root `README.md`. Its absence in other repositories is expected.
@@ -38,21 +39,14 @@ sandboxed sessions:
 export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
 ```
 
-Do not run `status` or `update` before normal navigation. Query the existing
-index first. If a query returns no candidates, run `update --format json` once
-and repeat the same query. If the retry is also empty, continue with the normal
-fallbacks or report that the completed index has no match.
+Do not preflight freshness. Query the existing index first. If a search is
+empty, run `update --format json` once and retry it. Update after a snapshot
+mismatch only when further indexed navigation depends on fresh content.
 
-Also update when a command explicitly reports stale index state. If update
-reports incompatible schema, file source, hashing, or indexing configuration,
-run `rebuild`. For another checkout path or unknown Git history, rebuild unless
-the user explicitly wants that index adopted; only then use `update --adopt`.
-Use `status` or `logs` only to diagnose an unclear or failed operation.
-
-If no index exists, request that the user initialize and update it. Index
-Git-tracked files only unless the task explicitly changes that contract. After
-editing, update only when further indexed navigation depends on the changed
-content or the task requires leaving a fresh index.
+If no index exists, request initialization. Follow update diagnostics: rebuild
+when required, and never use `update --adopt` without explicit user intent. Use
+`status` or `logs` only to diagnose failures. Index Git-tracked files only
+unless the task explicitly changes that contract.
 
 ## Navigate
 
