@@ -108,6 +108,23 @@ end
 	assertSymbol(t, symbols, "method", "perform", 3)
 }
 
+func TestRubyVersionSupported(t *testing.T) {
+	for _, test := range []struct {
+		version string
+		want    bool
+	}{
+		{version: "2.7.8", want: false},
+		{version: "3.4.6", want: false},
+		{version: "4.0.0", want: true},
+		{version: "4.1.0-preview1", want: true},
+		{version: "invalid", want: false},
+	} {
+		if got := rubyVersionSupported(test.version); got != test.want {
+			t.Errorf("rubyVersionSupported(%q) = %t, want %t", test.version, got, test.want)
+		}
+	}
+}
+
 func TestRubyBatchMatchesSingleFileExtraction(t *testing.T) {
 	source := `module Sample
   class Worker
@@ -199,44 +216,6 @@ end
 	symbols, ok := parseRubyPrismDump("worker.rb", "ruby", splitLines(source), dump)
 	if !ok {
 		t.Fatal("parseRubyPrismDump failed")
-	}
-
-	assertSymbol(t, symbols, "module", "Sample", 1)
-	assertSymbol(t, symbols, "class", "Worker", 2)
-	assertSymbol(t, symbols, "constant", "CONST", 3)
-	assertSymbol(t, symbols, "method", "self.build", 5)
-	assertSymbol(t, symbols, "method", "perform!", 8)
-	assertSymbolEndLine(t, symbols, "module", "Sample", 11)
-	assertSymbolEndLine(t, symbols, "class", "Worker", 10)
-	assertSymbolEndLine(t, symbols, "method", "perform!", 9)
-}
-
-func TestParseRubyParseYDumpSymbols(t *testing.T) {
-	source := `module Sample
-  class Worker
-    CONST = 1
-
-    def self.build
-    end
-
-    def perform!
-    end
-  end
-end
-`
-	dump := `# @ NODE_SCOPE (id: 1, line: 1, location: (1,0)-(11,3))
-#     @ NODE_MODULE (id: 2, line: 1, location: (1,0)-(11,3))*
-#           @ NODE_CLASS (id: 3, line: 2, location: (2,2)-(10,5))*
-#                 @ NODE_CDECL (id: 4, line: 3, location: (3,4)-(3,13))*
-#                 +- nd_vid: :CONST
-#                 @ NODE_DEFS (id: 5, line: 5, location: (5,4)-(6,7))*
-#                 +- nd_mid: :build
-#                 @ NODE_DEFN (id: 6, line: 8, location: (8,4)-(9,7))*
-#                 +- nd_mid: :perform!
-`
-	symbols, ok := parseRubyParseYDump("worker.rb", "ruby", splitLines(source), dump)
-	if !ok {
-		t.Fatal("parseRubyParseYDump failed")
 	}
 
 	assertSymbol(t, symbols, "module", "Sample", 1)

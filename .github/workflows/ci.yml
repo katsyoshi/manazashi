@@ -12,8 +12,9 @@ jobs:
     name: Test (Ruby ${{ matrix.ruby }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        ruby: ["3.4", "4.0"]
+        ruby: ["4.0", head]
 
     steps:
       - name: Checkout
