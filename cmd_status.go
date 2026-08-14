@@ -94,7 +94,7 @@ func cmdStatus(args []string) error {
 		return err
 	}
 	if !dbExists && !locked {
-		return fmt.Errorf("index not found: %s; run init or rebuild first, or pass --db", db)
+		return newIndexNotFoundError(db, "run init or rebuild first, or pass --db")
 	}
 	if format == outputFormatJSON {
 		return writeStatusJSON(db, resolvedRoot, dbExists, lockInfo, locked)

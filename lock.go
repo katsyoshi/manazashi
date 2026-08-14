@@ -182,7 +182,7 @@ func queryLockNotice(db string) (string, error) {
 		if locked && errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("index %s in progress: %s; no previous index is available yet", info.operationName(), db)
 		}
-		return "", fmt.Errorf("index not found: %s; run rebuild first, or pass --db", db)
+		return "", newIndexNotFoundError(db, "run rebuild first, or pass --db")
 	}
 	if locked {
 		return fmt.Sprintf("warning: index %s in progress; using previous index: %s\n", info.operationName(), db), nil

@@ -9,7 +9,9 @@ import (
 
 func main() {
 	if err := manazashi.Run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		if writeErr := manazashi.WriteError(os.Stderr, os.Args[1:], err); writeErr != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }

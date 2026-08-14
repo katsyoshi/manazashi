@@ -63,6 +63,8 @@ output, and non-goals.
   `defs`, `outline`, and `refs`
 - [CLI contract](DESIGNS/cli.md): output formats, errors, stable results, and command
   families
+- [Structured CLI errors](DESIGNS/errors.md): JSON failure envelopes, stable error
+  codes, and stderr behavior
 - [Project and CLI naming](DESIGNS/naming.md): public names, package layout, and
   migration policy
 - [Source text encoding](DESIGNS/text-encoding.md)

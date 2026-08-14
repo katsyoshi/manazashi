@@ -13,6 +13,10 @@ All commands are non-interactive. They write their result to stdout, warnings
 to stderr, and return an error/non-zero process status on failure. Lock-related
 successful skips are the documented exception for `rebuild` and `update`.
 
+Failures honor an explicit JSON format request. The structured error envelope,
+stable codes, stream behavior, and fallback classification are defined in
+[Structured CLI errors](errors.md).
+
 ## Output formats
 
 Commands accept `--format text|json`; text is the default. Unsupported format

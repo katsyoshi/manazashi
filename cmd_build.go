@@ -506,7 +506,7 @@ func runUpdate(args []string) (resultErr error) {
 			}
 			return nil
 		}
-		return fmt.Errorf("index not found: %s; run init or rebuild first, or pass --db", db)
+		return newIndexNotFoundError(db, "run init or rebuild first, or pass --db")
 	}
 	if err := os.MkdirAll(filepath.Dir(db), 0o755); err != nil {
 		return err
