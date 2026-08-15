@@ -39,14 +39,20 @@ sandboxed sessions:
 export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
 ```
 
-Do not preflight freshness. Query the existing index first. If a search is
-empty, run `update --format json` once and retry it. Update after a snapshot
-mismatch only when further indexed navigation depends on fresh content.
+Do not preflight freshness. For indexed navigation, query the existing index
+first. Except for the bare-filename lookup below, if a search is empty, run
+`update --format json` once and retry it. Update after a snapshot mismatch only
+when further indexed navigation depends on fresh content.
 
 If no index exists, request initialization. Follow update diagnostics: rebuild
 when required, and never use `update --adopt` without explicit user intent. Use
 `status` or `logs` only to diagnose failures. Index Git-tracked files only
 unless the task explicitly changes that contract.
+
+Untracked files are outside the index. If the user identifies a target as
+untracked, skip index maintenance and read or search the live checkout
+directly. If an indexed lookup reports an untracked path, fall back the same
+way; do not update or rebuild solely to make it searchable.
 
 ## Navigate
 
@@ -65,6 +71,12 @@ for paths and indexing diagnostics, and `show` for bounded source context. Use
 `schema`, `stats`, or `metrics` when the task needs index structure or counts.
 Use `help --format json COMMAND` for exact command options instead of relying
 on a copied command catalog.
+
+Read an explicitly supplied repository-relative path from the live checkout
+directly. Treat a bare filename as repository-root-relative first. If that path
+does not exist, skip index maintenance and search the live checkout under the
+repository root for that basename. Do not broaden this fallback into an
+untracked-content search.
 
 If dedicated commands cannot express a query, use read-only SQL. Read
 [`references/query-patterns.md`](references/query-patterns.md) before composing
