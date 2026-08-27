@@ -17,6 +17,10 @@ a language server or full code-intelligence system.
 - Prefer small, behavior-preserving commits.
 - Keep implementation style close to the existing Go code.
 - Use `gofmt` on edited Go files.
+- When an appropriate dependency requires a newer supported Go release, prefer
+  updating the project toolchain over pinning an older dependency solely to
+  preserve the previous minimum. Update `go.mod`, documentation, and CI
+  expectations together.
 - Do not rewrite unrelated code while making narrow changes.
 - The checked-in SQL under `sql/` is embedded into the binary with `go:embed`.
   Prefer adding or changing SQL files over growing large SQL string literals in

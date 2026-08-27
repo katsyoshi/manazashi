@@ -44,14 +44,16 @@ against real-world repositories.
 
 ## Install
 
-`manazashi` requires `git`, the `sqlite3` command, and Go for installation.
+`manazashi` requires `git`, the `sqlite3` command, Go, and a C compiler for
+installation. Rust symbol extraction embeds Tree-sitter through CGO.
 
 ### Development environment
 
 Development and verification use portable command-line tools rather than a
 specific operating system or shell. A contributor checkout should provide:
 
-- Go 1.22 or newer, matching `go.mod`
+- Go 1.23 or newer, matching `go.mod`
+- CGO enabled with a working C compiler
 - Git
 - the `sqlite3` command
 - standard shell utilities, including `grep`, for human-oriented source search
@@ -437,7 +439,8 @@ Main tables:
 - `meta`: schema version, file source, hash algorithm, last successful index time, operation, and VCS metadata such as head, branch, tracked-file dirty state, and dirty snapshot hash
 - `components`: completed state and update time for the `files`, `lines`, `symbols`, `metrics`, and `fts` index components
 - `files`: repository-relative paths and file metadata
-- `symbols`: regex-extracted definitions such as functions, methods, classes, modules, interfaces, traits, and types
+- `symbols`: parser-backed or regex-extracted definitions such as functions,
+  methods, classes, modules, interfaces, traits, and types
 - `lines`: indexed source lines
 - `file_metrics`: per-file line, blank line, comment line, code line, and symbol counts
 - `files_fts` and `symbols_fts`: FTS5 tables when the installed `sqlite3` supports FTS5

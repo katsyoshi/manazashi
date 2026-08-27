@@ -31,6 +31,16 @@ parse-tree dump, and extracts classes, modules, methods, singleton method names,
 and constant writes. If Ruby parsing is unavailable or fails, extraction falls
 back to the language's regular-expression patterns.
 
+Rust uses the embedded Tree-sitter Rust grammar. It extracts modules, structs,
+unions, enums, traits, type aliases, constants, statics, free functions, trait
+and implementation methods, and `macro_rules!` definitions. Positions and end
+lines come from syntax-tree nodes. Functions nested below a trait or `impl` are
+methods; other functions are free functions. The extractor records explicit
+source definitions only: it does not expand declarative macros, execute
+procedural macros or build scripts, or evaluate Cargo features and `cfg`
+expressions. The embedded parser is authoritative for Rust; Rust does not fall
+back to regular-expression symbol extraction.
+
 Other supported languages use intentionally lightweight regular-expression
 patterns. These patterns identify common declaration forms and may miss valid
 syntax or report unusual syntax imperfectly. Their end line defaults to the
@@ -78,10 +88,8 @@ macros.
 
 ## Open Questions
 
-- Which languages justify a parser-backed extractor beyond Go and Ruby.
 - Whether the cross-language kind vocabulary needs tighter rules for constructs
-  such as Java constructors, TypeScript members, Rust `impl` methods, and Swift
-  protocols.
+  such as Java constructors, TypeScript members, and Swift protocols.
 - Whether qualified names or explicit ownership are needed by `defs` or
   `outline`; they should not be added solely to enrich `refs`.
 - Whether comments, strings, and executable source ever need lexical-region

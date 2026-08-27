@@ -54,13 +54,6 @@ var symbolPatterns = map[string][]symbolSpec{
 		spec(`^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\(`, "function"),
 		spec(`^\s*type\s+([A-Za-z_]\w*)\s+(?:struct|interface)\b`, "type"),
 	},
-	"rust": {
-		spec(`^\s*(?:pub(?:\([^)]*\))?\s+)?macro_rules!\s+([A-Za-z_]\w*)\b`, "macro"),
-		spec(`^\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_]\w*)\s*[<(]`, "function"),
-		spec(`^\s*(?:pub(?:\([^)]*\))?\s+)?struct\s+([A-Za-z_]\w*)\b`, "type"),
-		spec(`^\s*(?:pub(?:\([^)]*\))?\s+)?enum\s+([A-Za-z_]\w*)\b`, "enum"),
-		spec(`^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+([A-Za-z_]\w*)\b`, "trait"),
-	},
 	"java": {
 		spec(`^\s*(?:public|protected|private|abstract|final|static|\s)+class\s+([A-Za-z_]\w*)\b`, "class"),
 		spec(`^\s*(?:public|protected|private|static|final|synchronized|native|abstract|\s)+[\w<>\[\], ?]+\s+([A-Za-z_]\w*)\s*\([^;]*\)\s*\{?\s*$`, "method"),
@@ -122,6 +115,7 @@ var symbolPatterns = map[string][]symbolSpec{
 var languageSymbolExtractors = map[string]symbolExtractor{
 	"go":   goSymbolExtractor{},
 	"ruby": rubySymbolExtractor{},
+	"rust": rustSymbolExtractor{},
 }
 
 var skipSymbolNames = map[string]bool{
