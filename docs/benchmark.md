@@ -177,3 +177,26 @@ pages. The `files_fts` tables used 124.4 MiB and `symbols_fts` used 98.1 MiB,
 about 47% combined. As with Rails, this does not isolate FTS update time. The
 history measurements show that normal updates remain small and that large
 source changes, rather than total repository size alone, dominate the outliers.
+
+## Rust
+
+Initial parser-backed Rust indexing was measured on 2026-08-27 (UTC):
+
+- Rust `main`: `bff8e12ff5e6bcd53dfb1dbccdcec80a60a856ed`
+- manazashi: `75acf73ba27647eb343b620ea38e1a3d227e6420`
+- Git-tracked files: 62,328
+- Git-tracked Rust files: 38,504
+- Indexed files: 60,740
+- Indexed lines: 5,071,502
+- Symbols: 297,985
+- Full rebuild: 28.51 seconds
+- SQLite database size: 816 MiB
+
+This first measurement covers the full rebuild only. Query and history-update
+measurements were intentionally deferred.
+
+A 28.51-second rebuild is too expensive for the intended lightweight,
+rebuildable-index workflow, so improving Rust indexing performance is required.
+This result establishes the baseline but does not by itself identify the
+bottleneck. Profile the build phases before attributing the cost to parsing,
+symbol extraction, SQLite writes, FTS construction, or another component.
