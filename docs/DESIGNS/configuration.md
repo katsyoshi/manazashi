@@ -79,6 +79,8 @@ database.
 
 ## Open Questions
 
+- Whether project configuration needs a `cache_dir` distinct from the exact
+  `db` path, and where it belongs in database path precedence.
 - Whether explicit nested roots should consistently resolve to the containing
   Git root, as `init` already does. Current behavior differs across commands.
 - Whether user/system configuration should eventually permit encoding policy;
