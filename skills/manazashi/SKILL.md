@@ -15,72 +15,77 @@ checkout's root `README.md`. Its absence in other repositories is expected.
 
 ## Select the executable
 
-Resolve the target repository root, then select `mzci` using this precedence:
+Resolve the target repository root to an absolute path and bind it to
+`REPO_ROOT`, then select `mzci` using this precedence:
 
 | Condition | Tool |
 | --- | --- |
-| `MANAZASHI_BIN` is an absolute path | That exact path |
-| `MANAZASHI_BIN` is relative | Stop and request an absolute path |
-| `MANAZASHI_BIN` is unset | `exec/mzci` beside this `SKILL.md` |
+| `MANAZASHI_EXECUTABLE` is an absolute path | That exact path |
+| `MANAZASHI_EXECUTABLE` is relative | Stop and request an absolute path |
+| `MANAZASHI_EXECUTABLE` is unset | `exec/mzci` beside this `SKILL.md` |
 | The selected file is missing or not executable | Stop and request installation or configuration |
 
 Never discover a binary from `PATH` or the target repository as a fallback.
-Bind the selected absolute path to `TOOL` for subsequent commands. Do not run
-`version` as a preflight; use it only to diagnose an unsupported command or
-suspected compatibility problem. Treat its build commit as an identity, not an
-ordered version.
+Bind the selected absolute path to `TOOL`; use `version` only for compatibility
+diagnosis, not as a preflight.
+
+Do not rely on the process working directory to select the repository. Pass
+`--root "$REPO_ROOT"` to commands that accept `--root`; when the user supplied
+a DB path, pass `--db` instead. Commands such as `rebuild` and `update` take the
+repository root as a positional argument, so pass `"$REPO_ROOT"` to them.
+
+`MANAZASHI_EXECUTABLE` selects the tool; `MANAZASHI_CACHE_DIR` selects the
+SQLite index location. They are independent, and a value from one must never
+be assigned to or inferred as the other. If the executable variable is unset,
+use the bundled `exec/mzci`.
+
+When checking both variables, print each name and value with labels; never
+infer ownership from unlabeled `printenv` output.
 
 ## Maintain the index
 
 Unless the user supplied a DB path, use a writable cache directory in
-sandboxed sessions:
+sandboxed sessions, preserving any existing value:
 
 ```bash
 export MANAZASHI_CACHE_DIR="${MANAZASHI_CACHE_DIR:-/tmp/manazashi}"
 ```
 
-Do not preflight freshness. For indexed navigation, query the existing index
-first. Except for the bare-filename lookup below, if a search is empty, run
-`update --format json` once and retry it. Update after a snapshot mismatch only
-when further indexed navigation depends on fresh content.
+Do not add a per-command cache assignment when a value is already set. Resolve
+relative cache paths from `REPO_ROOT`.
 
-If no index exists, request initialization. Follow update diagnostics: rebuild
-when required, and never use `update --adopt` without explicit user intent. Use
-`status` or `logs` only to diagnose failures. Index Git-tracked files only
-unless the task explicitly changes that contract.
+Do not preflight freshness: query the existing index first. If a search is
+empty, run `update --format json "$REPO_ROOT"` once and retry it, except for
+bare-filename lookups. Request initialization if no index exists; rebuild when
+diagnostics require it, and never use `update --adopt` without explicit intent.
+Use `status` or `logs` for diagnostics. Index Git-tracked files only.
 
-Untracked files are outside the index. If the user identifies a target as
-untracked, skip index maintenance and read or search the live checkout
-directly. If an indexed lookup reports an untracked path, fall back the same
-way; do not update or rebuild solely to make it searchable.
+Untracked files are outside the index. Read them from the live checkout and do
+not update or rebuild solely to make them searchable.
 
 ## Navigate
 
 Prefer dedicated commands over raw SQL:
 
 ```bash
-"$TOOL" defs --format json parse_config
-"$TOOL" refs --format json parse_config
-"$TOOL" outline --format json path/to/file.go
-"$TOOL" files --format json config
-"$TOOL" show --line 42 --context 20 --format json path/to/file.go
+"$TOOL" defs --root "$REPO_ROOT" --format json parse_config
+"$TOOL" refs --root "$REPO_ROOT" --format json parse_config
+"$TOOL" outline --root "$REPO_ROOT" --format json path/to/file.go
+"$TOOL" files --root "$REPO_ROOT" --format json config
+"$TOOL" show --root "$REPO_ROOT" --line 42 --context 20 --format json path/to/file.go
 ```
 
-Use `defs` and `outline` for definitions, `refs` for likely references, `files`
-for paths and indexing diagnostics, and `show` for bounded source context. Use
-`schema`, `stats`, or `metrics` when the task needs index structure or counts.
-Use `help --format json COMMAND` for exact command options instead of relying
-on a copied command catalog.
+Use `defs`/`outline` for definitions, `refs` for references, `files` for paths,
+and `show` for bounded context. Use `schema`, `stats`, or `metrics` for index
+structure and counts; use `help --format json COMMAND` for exact options.
 
-Read an explicitly supplied repository-relative path from the live checkout
-directly. Treat a bare filename as repository-root-relative first. If that path
-does not exist, skip index maintenance and search the live checkout under the
-repository root for that basename. Do not broaden this fallback into an
-untracked-content search.
+Read explicitly supplied repository-relative paths from the live checkout.
+Treat a bare filename as repository-root-relative first; if absent, search for
+that basename under the repository root without broadening to content search.
 
-If dedicated commands cannot express a query, use read-only SQL. Read
-[`references/query-patterns.md`](references/query-patterns.md) before composing
-raw SQL. Prefer bounded results and join `lines` to `files` for paths.
+If dedicated commands cannot express a query, use read-only SQL after reading
+[`references/query-patterns.md`](references/query-patterns.md). Keep results
+bounded and join `lines` to `files` for paths.
 
 Do not use `grep`, `rg`, or `find` for code navigation until indexed commands
 and read-only SQL are insufficient. Ordinary shell commands remain appropriate
