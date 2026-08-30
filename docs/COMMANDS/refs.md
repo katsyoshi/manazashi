@@ -35,6 +35,9 @@ mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
   is 100 and it must be positive.
 - `--format` defaults to `text`.
 
+`NAME` accepts one identifier per invocation. Extra positional arguments are
+rejected; run separate queries when inspecting several identifiers.
+
 No results is a successful query. Text output shows empty sections and JSON
 uses empty arrays.
 
@@ -71,6 +74,10 @@ navigation results even when they are not executable references.
 Multiple definitions with the same name are not disambiguated. All matching
 definitions and all lexical candidates are returned subject to filters and the
 candidate limit.
+
+The result is a snapshot of the index. Use `status` to check freshness and
+read the live checkout before editing or relying on source details. Use
+`--kind`, `--language`, and `--path` to reduce same-name results.
 
 ## Symbol kinds
 

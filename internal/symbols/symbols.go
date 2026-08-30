@@ -32,11 +32,6 @@ var symbolPatterns = map[string][]symbolSpec{
 		spec(`^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(`, "function"),
 		spec(`^\s*class\s+([A-Za-z_]\w*)\b`, "class"),
 	},
-	"ruby": {
-		spec(`^\s*def\s+((?:self\.)?[A-Za-z_]\w*[!?=]?)\b`, "method"),
-		spec(`^\s*class\s+([A-Za-z_:]\w*(?:::\w+)*)\b`, "class"),
-		spec(`^\s*module\s+([A-Za-z_:]\w*(?:::\w+)*)\b`, "module"),
-	},
 	"javascript": {
 		spec(`^\s*(?:export\s+)?(?:async\s+)?function\s+([$A-Za-z_][\w$]*)\s*\(`, "function"),
 		spec(`^\s*(?:export\s+)?(?:const|let|var)\s+([$A-Za-z_][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[$A-Za-z_][\w$]*)\s*=>`, "function"),

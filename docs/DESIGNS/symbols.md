@@ -25,11 +25,11 @@ Go uses the standard Go parser. It distinguishes receiver methods from
 functions and extracts types, variables, and constants. End lines come from
 the parsed declaration.
 
-Ruby invokes the available `ruby` command with source on stdin and a five-second
-timeout. It prefers a Prism parse-tree dump, falls back to the traditional
-parse-tree dump, and extracts classes, modules, methods, singleton method names,
-and constant writes. If Ruby parsing is unavailable or fails, extraction falls
-back to the language's regular-expression patterns.
+Ruby uses the embedded Tree-sitter Ruby grammar. It extracts classes, modules,
+methods, singleton method names, and unqualified constant assignments. Positions
+and end lines come from syntax-tree nodes. The embedded parser is authoritative
+for Ruby; extraction does not require an installed Ruby command and does not
+fall back to regular-expression symbol extraction.
 
 Rust uses the embedded Tree-sitter Rust grammar. It extracts modules, structs,
 unions, enums, traits, type aliases, constants, statics, free functions, trait

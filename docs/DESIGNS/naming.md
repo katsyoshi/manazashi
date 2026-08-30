@@ -31,11 +31,11 @@ name:
 - user configuration: `$XDG_CONFIG_HOME/manazashi/config.toml`
 - system configuration: `/etc/manazashi/config.toml`
 - cache environment: `MANAZASHI_CACHE_DIR`
-- optional binary override used by the skill: `MANAZASHI_BIN`
+- optional binary override used by the skill: `MANAZASHI_EXECUTABLE`
 
 The agent skill directory and frontmatter name are both `manazashi`. Its
 default binary is `exec/mzci` within that directory. An absolute
-`MANAZASHI_BIN` overrides that exact path when set. The skill never searches
+`MANAZASHI_EXECUTABLE` overrides that exact path when set. The skill never searches
 `PATH` or selects a binary from the target repository.
 
 ## Migration policy

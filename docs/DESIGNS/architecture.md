@@ -62,8 +62,7 @@ The project deliberately does not provide:
 - network services or remote storage
 - automatic indexing of untracked or ignored files
 - a general document knowledge base
-- automatic execution of source code, except the bounded Ruby parser dump
-  used for Ruby symbol extraction
+- automatic execution of source code
 
 Raw read-only SQL remains available so an agent can compose searches without
 requiring every query shape to become a dedicated command.

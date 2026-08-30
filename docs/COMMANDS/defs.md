@@ -20,6 +20,9 @@ mzci defs [--root ROOT|--db DB] [--kind KIND]
 - `--limit` defaults to 50.
 - `--format` defaults to `text`.
 
+`QUERY` accepts one query per invocation. To search several symbols, invoke
+`defs` separately for each query or use `sql` for a custom bounded search.
+
 ## Matching and ordering
 
 Query mode matches case-insensitively when the stored name equals the query,
@@ -31,6 +34,11 @@ List mode does not search. It sorts by path, line, column, and name.
 
 No results is successful. Definitions are static navigation candidates and may
 share a name or be missed by a lightweight extractor.
+
+The result is a snapshot of the index. Use `status` to check freshness and
+read the live checkout before editing or relying on source details. For
+same-named definitions, narrow the result with `--kind`, `--language`, or
+`--path`.
 
 ## Output
 
