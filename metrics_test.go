@@ -44,3 +44,25 @@ func TestComputeFileMetricsInlineBlockComment(t *testing.T) {
 		t.Fatalf("computeFileMetrics() = %+v, want %+v", got, want)
 	}
 }
+
+func TestComputeFileMetricsTerraform(t *testing.T) {
+	lines := []string{
+		`resource "aws_instance" "web" {`,
+		"  # preferred comment style",
+		"  // supported alternative",
+		"  /* block",
+		"     comment */",
+		"}",
+	}
+
+	got := computeFileMetrics("terraform", lines, 1)
+	want := fileMetrics{
+		lineCount:    6,
+		commentLines: 4,
+		codeLines:    2,
+		symbolCount:  1,
+	}
+	if got != want {
+		t.Fatalf("computeFileMetrics() = %+v, want %+v", got, want)
+	}
+}

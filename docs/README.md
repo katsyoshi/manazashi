@@ -68,6 +68,8 @@ output, and non-goals.
 - [Project and CLI naming](DESIGNS/naming.md): public names, package layout, and
   migration policy
 - [Source text encoding](DESIGNS/text-encoding.md)
+- [Terraform support](DESIGNS/terraform.md): file detection, comments, symbols,
+  and intentionally deferred HCL parsing
 
 The main body of each document describes the current implementation. An
 `Open Questions` section records intentionally deferred decisions; it is not a

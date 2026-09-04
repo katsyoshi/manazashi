@@ -108,6 +108,79 @@ func TestExtractMacroSymbols(t *testing.T) {
 	}
 }
 
+func TestExtractTerraformSymbols(t *testing.T) {
+	source := `terraform {
+  required_version = ">= 1.10"
+}
+
+provider "aws" {}
+variable "region" {}
+module "network" {}
+data "aws_ami" "ubuntu" {}
+resource "aws_instance" "web-server" {}
+output "instance_ip" {}
+check "health" {}
+
+locals {
+  common_tags = {}
+	text = <<-EOT
+	resource "aws_instance" "not-a-symbol" {}
+	EOT
+  resource "nested" "also-not-a-symbol" {}
+}
+`
+	symbols := Extract("main.tf", "terraform", splitLines(source))
+
+	assertSymbol(t, symbols, "provider", "aws", 5)
+	assertSymbol(t, symbols, "variable", "region", 6)
+	assertSymbol(t, symbols, "module", "network", 7)
+	assertSymbol(t, symbols, "data", "ubuntu", 8)
+	assertSymbol(t, symbols, "resource", "web-server", 9)
+	assertSymbol(t, symbols, "output", "instance_ip", 10)
+	assertSymbol(t, symbols, "check", "health", 11)
+	assertNoSymbol(t, symbols, "variable", "common_tags")
+	assertNoSymbol(t, symbols, "resource", "not-a-symbol")
+	assertNoSymbol(t, symbols, "resource", "also-not-a-symbol")
+	assertSymbolEndLine(t, symbols, "resource", "web-server", 9)
+}
+
+func TestExtractTerraformJSONSymbols(t *testing.T) {
+	source := `{
+  "variable": {
+    "region": {
+      "type": "string"
+    }
+  },
+  "resource": {
+    "aws_instance": {
+      "web": {
+        "ami": "ami-example"
+      }
+    }
+  }
+}
+`
+	symbols := Extract("generated.tf.json", "terraform", splitLines(source))
+
+	assertSymbol(t, symbols, "variable", "region", 3)
+	assertSymbolEndLine(t, symbols, "variable", "region", 5)
+	assertSymbol(t, symbols, "resource", "web", 9)
+	assertSymbolEndLine(t, symbols, "resource", "web", 11)
+}
+
+func TestExtractTerraformSymbolsRecoversAroundSyntaxErrors(t *testing.T) {
+	source := `variable "before" {}
+
+this is not valid HCL
+
+output "after" {}
+`
+	symbols := Extract("broken.tf", "terraform", splitLines(source))
+
+	assertSymbol(t, symbols, "variable", "before", 1)
+	assertSymbol(t, symbols, "output", "after", 5)
+}
+
 func assertSymbol(t *testing.T, symbols []Symbol, kind, name string, line int) {
 	t.Helper()
 	for _, symbol := range symbols {

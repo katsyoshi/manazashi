@@ -200,3 +200,52 @@ rebuildable-index workflow, so improving Rust indexing performance is required.
 This result establishes the baseline but does not by itself identify the
 bottleneck. Profile the build phases before attributing the cost to parsing,
 symbol extraction, SQLite writes, FTS construction, or another component.
+
+## Terraform
+
+Initial HCL-parser-backed Terraform indexing was measured on 2026-09-04 (UTC)
+against [Google Cloud Foundation Fabric](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric),
+a monorepo of landing-zone blueprints and reusable Google Cloud modules.
+
+Repository snapshot:
+
+- Cloud Foundation Fabric `master`: `0734f00a59fd15cca6591eab7a3902627a5ac60b`
+- manazashi: `93cd3c4d5f8ab5be03b55aacc7a227f77957c146`
+- Git-tracked files: 2,984
+- Git-tracked Terraform files: 1,000 (`799` `.tf`, `200` `.tfvars`, and one
+  `.tf.json`)
+- Indexed files: 2,946
+- Indexed lines: 314,959
+- Terraform lines: 95,998
+- Symbols: 3,525 total, including 3,303 Terraform symbols
+- SQLite database size: 41 MiB
+
+This run used the same CPU, memory, storage class, and hyperfine version listed
+above, with Linux 7.2.3, SQLite 3.53.3, Go 1.27.1-X:nodwarf5, and Terraform
+1.15.1. `terraform fmt -check -recursive` succeeded against the checkout before
+the result was recorded.
+
+Full rebuild used three warm-up runs followed by 10 measured runs. No-change
+incremental update used three warm-up runs followed by 30 measured runs.
+
+| Operation | Mean | Median | Range |
+| --- | ---: | ---: | ---: |
+| Full rebuild | 951.8 ms | 944.3 ms | 937.9–987.6 ms |
+| No-change incremental update | 196.4 ms | 196.3 ms | 192.8–203.4 ms |
+
+The HCL parser extracted the following top-level Terraform definitions:
+
+| Kind | Symbols |
+| --- | ---: |
+| `variable` | 1,539 |
+| `resource` | 860 |
+| `output` | 709 |
+| `module` | 152 |
+| `data` | 32 |
+| `provider` | 8 |
+| `check` | 3 |
+
+This is primarily a parser-throughput and realistic-syntax baseline. Public
+module and blueprint repositories do not necessarily have the same structure
+or change patterns as a private production infrastructure repository. Query and
+history-update measurements are deferred.

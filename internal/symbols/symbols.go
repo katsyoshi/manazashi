@@ -108,9 +108,10 @@ var symbolPatterns = map[string][]symbolSpec{
 }
 
 var languageSymbolExtractors = map[string]symbolExtractor{
-	"go":   goSymbolExtractor{},
-	"ruby": rubySymbolExtractor{},
-	"rust": rustSymbolExtractor{},
+	"go":        goSymbolExtractor{},
+	"ruby":      rubySymbolExtractor{},
+	"rust":      rustSymbolExtractor{},
+	"terraform": terraformSymbolExtractor{},
 }
 
 var skipSymbolNames = map[string]bool{

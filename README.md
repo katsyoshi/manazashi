@@ -185,6 +185,12 @@ contract.
 
 `rebuild` requires a Git work tree and indexes files reported by `git ls-files`. If another `init`, `rebuild`, or `update` is already running for the same database, `rebuild` skips and exits successfully.
 
+Terraform `.tf`, `.tfvars`, `.tf.json`, and `.tfvars.json` files are classified
+as `terraform`. Native and JSON configuration expose common top-level blocks such as
+resources, data sources, modules, variables, outputs, providers, and checks to
+`defs` and `outline`; see the [Terraform support design](docs/DESIGNS/terraform.md)
+for the lightweight extraction boundary.
+
 Initialize a Git project for indexing:
 
 ```sh

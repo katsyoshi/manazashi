@@ -227,6 +227,10 @@ func detectLanguage(path string) string {
 	if lang, ok := langByName[base]; ok {
 		return lang
 	}
+	lowerPath := strings.ToLower(path)
+	if strings.HasSuffix(lowerPath, ".tfvars") || strings.HasSuffix(lowerPath, ".tf.json") || strings.HasSuffix(lowerPath, ".tfvars.json") {
+		return "terraform"
+	}
 	return langByExt[strings.ToLower(filepath.Ext(path))]
 }
 
