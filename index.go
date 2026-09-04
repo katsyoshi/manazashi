@@ -39,10 +39,18 @@ type indexedFileState struct {
 }
 
 func scanFileIndex(root, path string, info fs.FileInfo, config buildConfig) (fileIndex, error) {
-	return scanFileIndexWithRubyExtractor(root, path, info, config, nil)
+	return scanFileIndexWithExtractor(root, path, info, config, nil)
 }
 
 func scanFileIndexWithRubyExtractor(root, path string, info fs.FileInfo, config buildConfig, rubyExtractor *codesymbols.RubyExtractor) (fileIndex, error) {
+	return scanFileIndexCore(root, path, info, config, nil, rubyExtractor)
+}
+
+func scanFileIndexWithExtractor(root, path string, info fs.FileInfo, config buildConfig, extractor *codesymbols.Extractor) (fileIndex, error) {
+	return scanFileIndexCore(root, path, info, config, extractor, nil)
+}
+
+func scanFileIndexCore(root, path string, info fs.FileInfo, config buildConfig, extractor *codesymbols.Extractor, rubyExtractor *codesymbols.RubyExtractor) (fileIndex, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fileIndex{}, err
@@ -71,7 +79,12 @@ func scanFileIndexWithRubyExtractor(root, path string, info fs.FileInfo, config 
 	}
 	text := decoded.text
 	lines := splitLines(text)
-	symbols := codesymbols.ExtractWithRubyExtractor(rubyExtractor, rel, language, lines)
+	var symbols []codesymbols.Symbol
+	if extractor != nil {
+		symbols = codesymbols.ExtractWithExtractor(extractor, rel, language, lines)
+	} else {
+		symbols = codesymbols.ExtractWithRubyExtractor(rubyExtractor, rel, language, lines)
+	}
 	metrics := computeFileMetrics(language, lines, len(symbols))
 	index.text = text
 	index.lines = lines

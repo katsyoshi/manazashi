@@ -41,6 +41,16 @@ procedural macros or build scripts, or evaluate Cargo features and `cfg`
 expressions. The embedded parser is authoritative for Rust; Rust does not fall
 back to regular-expression symbol extraction.
 
+Java uses the embedded Tree-sitter Java grammar. It extracts class,
+interface, enum, and record declarations (records are stored as `class`),
+annotation type declarations (stored as `interface`), methods, and
+constructors (including compact record constructors, all stored as `method`).
+Fields, local variables, calls, and annotation elements are not symbols.
+Overloads, overrides, and constructors remain separate rows. Positions and end
+lines come from syntax-tree nodes, and signatures contain the declaration
+header without the body. The embedded parser is authoritative for Java; Java
+does not fall back to regular-expression symbol extraction.
+
 Other supported languages use intentionally lightweight regular-expression
 patterns. These patterns identify common declaration forms and may miss valid
 syntax or report unusual syntax imperfectly. Their end line defaults to the

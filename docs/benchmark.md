@@ -201,6 +201,42 @@ This result establishes the baseline but does not by itself identify the
 bottleneck. Profile the build phases before attributing the cost to parsing,
 symbol extraction, SQLite writes, FTS construction, or another component.
 
+### Rust Tree-sitter extraction investigation
+
+Measured on 2026-09-04 (UTC) against the same Rust revision. Screening used one
+warm-up followed by three measured rebuilds. An initial baseline run had a
+27.903-second median; later paired runs were slower on the same machine, so
+candidate decisions use measurements taken together rather than comparing
+absolute times across runs.
+
+Reusing one Rust parser for the full build was the only candidate that improved
+the paired result, from a 31.105-second baseline median to 30.943 seconds, or
+about 0.5%. A Tree-sitter query with definition captures did not improve the
+screening time. Replacing `NamedChild` recursion with a `TreeCursor` regressed a
+paired baseline from 31.709 seconds to 34.830 seconds, about 9.8%.
+
+`perf` showed costs in both Tree-sitter parsing and Go/C traversal, but also in
+SQL generation, SQLite, FTS construction, and garbage collection. Optimizing
+the Tree-sitter call pattern alone therefore did not meet the investigation's
+20% improvement target. The parser-reuse change was retained because it is
+behavior-preserving and removes repeated parser setup; query and cursor-walk
+experiments were discarded. A multiset comparison covering path, language,
+kind, name, line, end line, column, signature, context, and duplicate counts
+found no Rust symbol differences between the baseline and retained candidate.
+
+## Elasticsearch Java
+
+Measured on 2026-09-04 (UTC) against Elasticsearch
+`b93625360f7f997b31c5262d98f0e33a8b833e2e`. The checkout contained 47,853
+Git-tracked files, including 31,892 Java files and 6,742,371 Java lines. The
+index contained 47,157 indexed files and 427,180 Java symbols; the SQLite
+database was 1.54 GiB.
+
+With one warm-up and three measured runs, the full rebuild median was 50.46
+seconds. A no-change incremental update measured 1.372 seconds median. The
+rebuild is intentionally a large Java stress case; the update includes the
+tracked-file scan but does not reparse unchanged files.
+
 ## Terraform
 
 Initial HCL-parser-backed Terraform indexing was measured on 2026-09-04 (UTC)

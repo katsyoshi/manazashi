@@ -9,6 +9,12 @@ import (
 
 type rustSymbolExtractor struct{}
 
+// RustExtractor owns the parser used to extract Rust symbols. It is
+// safe to reuse sequentially across files, as done by rebuild and update.
+type RustExtractor struct {
+	parser *treesitter.Parser
+}
+
 var rustSymbolKinds = map[string]string{
 	"associated_type":  "type",
 	"const_item":       "constant",
@@ -23,13 +29,42 @@ var rustSymbolKinds = map[string]string{
 }
 
 func (rustSymbolExtractor) extract(path, language string, lines []string) ([]Symbol, bool) {
-	source := []byte(strings.Join(lines, "\n"))
-	parser := treesitter.NewParser()
-	defer parser.Close()
-	if err := parser.SetLanguage(treesitter.NewLanguage(treesitterrust.Language())); err != nil {
+	extractor := NewRustExtractor()
+	if extractor == nil {
 		return nil, false
 	}
-	tree := parser.Parse(source, nil)
+	defer extractor.Close()
+	return extractor.extract(path, language, lines)
+}
+
+func NewRustExtractor() *RustExtractor {
+	rustLanguage := treesitter.NewLanguage(treesitterrust.Language())
+	parser := treesitter.NewParser()
+	if err := parser.SetLanguage(rustLanguage); err != nil {
+		parser.Close()
+		return nil
+	}
+	return &RustExtractor{parser: parser}
+}
+
+func (extractor *RustExtractor) Close() {
+	if extractor == nil {
+		return
+	}
+	extractor.parser.Close()
+}
+
+func ExtractWithRustExtractor(extractor *RustExtractor, path, language string, lines []string) []Symbol {
+	if language != "rust" || extractor == nil {
+		return Extract(path, language, lines)
+	}
+	symbols, _ := extractor.extract(path, language, lines)
+	return symbols
+}
+
+func (extractor *RustExtractor) extract(path, language string, lines []string) ([]Symbol, bool) {
+	source := []byte(strings.Join(lines, "\n"))
+	tree := extractor.parser.Parse(source, nil)
 	if tree == nil {
 		return nil, false
 	}

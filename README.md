@@ -45,7 +45,7 @@ against real-world repositories.
 ## Install
 
 `manazashi` requires `git`, the `sqlite3` command, Go, and a C compiler for
-installation. Ruby and Rust symbol extraction embed Tree-sitter through CGO.
+installation. Java, Ruby, and Rust symbol extraction embed Tree-sitter through CGO.
 
 ### Development environment
 

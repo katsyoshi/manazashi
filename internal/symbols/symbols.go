@@ -49,10 +49,6 @@ var symbolPatterns = map[string][]symbolSpec{
 		spec(`^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\(`, "function"),
 		spec(`^\s*type\s+([A-Za-z_]\w*)\s+(?:struct|interface)\b`, "type"),
 	},
-	"java": {
-		spec(`^\s*(?:public|protected|private|abstract|final|static|\s)+class\s+([A-Za-z_]\w*)\b`, "class"),
-		spec(`^\s*(?:public|protected|private|static|final|synchronized|native|abstract|\s)+[\w<>\[\], ?]+\s+([A-Za-z_]\w*)\s*\([^;]*\)\s*\{?\s*$`, "method"),
-	},
 	"kotlin": {
 		spec(`^\s*(?:public|private|protected|internal|open|override|suspend|\s)*fun\s+([A-Za-z_]\w*)\s*\(`, "function"),
 		spec(`^\s*(?:data\s+|sealed\s+|open\s+)?class\s+([A-Za-z_]\w*)\b`, "class"),
@@ -109,6 +105,7 @@ var symbolPatterns = map[string][]symbolSpec{
 
 var languageSymbolExtractors = map[string]symbolExtractor{
 	"go":        goSymbolExtractor{},
+	"java":      javaSymbolExtractor{},
 	"ruby":      rubySymbolExtractor{},
 	"rust":      rustSymbolExtractor{},
 	"terraform": terraformSymbolExtractor{},

@@ -405,8 +405,8 @@ func runRebuild(args []string) (resultErr error) {
 	}()
 	fts := hasFTS5()
 	ignored := cloneIgnored(options.extraIgnored)
-	rubyExtractor := codesymbols.NewRubyExtractor()
-	defer rubyExtractor.Close()
+	extractor := codesymbols.NewExtractor()
+	defer extractor.Close()
 	writer, wait, err := sqliteWriter(tmpDB)
 	if err != nil {
 		return err
@@ -426,7 +426,7 @@ func runRebuild(args []string) (resultErr error) {
 	nextFileID := 1
 	nextSymbolID := 1
 	err = walkGitTrackedFiles(root, ignored, options.maxBytes, func(path string, info fs.FileInfo) error {
-		index, err := scanFileIndexWithRubyExtractor(root, path, info, options.config(), rubyExtractor)
+		index, err := scanFileIndexWithExtractor(root, path, info, options.config(), extractor)
 		if err != nil {
 			return nil
 		}
@@ -541,8 +541,8 @@ func runUpdate(args []string) (resultErr error) {
 	}
 	candidates, candidateOnly := updateCandidatePaths(root, existing, meta)
 	ignored := cloneIgnored(options.extraIgnored)
-	rubyExtractor := codesymbols.NewRubyExtractor()
-	defer rubyExtractor.Close()
+	extractor := codesymbols.NewExtractor()
+	defer extractor.Close()
 	writer, wait, err := sqliteWriter(db)
 	if err != nil {
 		return err
@@ -563,7 +563,7 @@ func runUpdate(args []string) (resultErr error) {
 	var transcodedCount, encodingSkippedCount int
 	diagnostics := []encodingDiagnostic{}
 	err = walkGitTrackedFileSet(root, ignored, options.maxBytes, candidates, func(path string, info fs.FileInfo) error {
-		index, err := scanFileIndexWithRubyExtractor(root, path, info, options.config(), rubyExtractor)
+		index, err := scanFileIndexWithExtractor(root, path, info, options.config(), extractor)
 		if err != nil {
 			return nil
 		}
