@@ -200,3 +200,88 @@ rebuildable-index workflow, so improving Rust indexing performance is required.
 This result establishes the baseline but does not by itself identify the
 bottleneck. Profile the build phases before attributing the cost to parsing,
 symbol extraction, SQLite writes, FTS construction, or another component.
+
+### Rust Tree-sitter extraction investigation
+
+Measured on 2026-09-04 (UTC) against the same Rust revision. Screening used one
+warm-up followed by three measured rebuilds. An initial baseline run had a
+27.903-second median; later paired runs were slower on the same machine, so
+candidate decisions use measurements taken together rather than comparing
+absolute times across runs.
+
+Reusing one Rust parser for the full build was the only candidate that improved
+the paired result, from a 31.105-second baseline median to 30.943 seconds, or
+about 0.5%. A Tree-sitter query with definition captures did not improve the
+screening time. Replacing `NamedChild` recursion with a `TreeCursor` regressed a
+paired baseline from 31.709 seconds to 34.830 seconds, about 9.8%.
+
+`perf` showed costs in both Tree-sitter parsing and Go/C traversal, but also in
+SQL generation, SQLite, FTS construction, and garbage collection. Optimizing
+the Tree-sitter call pattern alone therefore did not meet the investigation's
+20% improvement target. The parser-reuse change was retained because it is
+behavior-preserving and removes repeated parser setup; query and cursor-walk
+experiments were discarded. A multiset comparison covering path, language,
+kind, name, line, end line, column, signature, context, and duplicate counts
+found no Rust symbol differences between the baseline and retained candidate.
+
+## Elasticsearch Java
+
+Measured on 2026-09-04 (UTC) against Elasticsearch
+`b93625360f7f997b31c5262d98f0e33a8b833e2e`. The checkout contained 47,853
+Git-tracked files, including 31,892 Java files and 6,742,371 Java lines. The
+index contained 47,157 indexed files and 427,180 Java symbols; the SQLite
+database was 1.54 GiB.
+
+With one warm-up and three measured runs, the full rebuild median was 50.46
+seconds. A no-change incremental update measured 1.372 seconds median. The
+rebuild is intentionally a large Java stress case; the update includes the
+tracked-file scan but does not reparse unchanged files.
+
+## Terraform
+
+Initial HCL-parser-backed Terraform indexing was measured on 2026-09-04 (UTC)
+against [Google Cloud Foundation Fabric](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric),
+a monorepo of landing-zone blueprints and reusable Google Cloud modules.
+
+Repository snapshot:
+
+- Cloud Foundation Fabric `master`: `0734f00a59fd15cca6591eab7a3902627a5ac60b`
+- manazashi: `93cd3c4d5f8ab5be03b55aacc7a227f77957c146`
+- Git-tracked files: 2,984
+- Git-tracked Terraform files: 1,000 (`799` `.tf`, `200` `.tfvars`, and one
+  `.tf.json`)
+- Indexed files: 2,946
+- Indexed lines: 314,959
+- Terraform lines: 95,998
+- Symbols: 3,525 total, including 3,303 Terraform symbols
+- SQLite database size: 41 MiB
+
+This run used the same CPU, memory, storage class, and hyperfine version listed
+above, with Linux 7.2.3, SQLite 3.53.3, Go 1.27.1-X:nodwarf5, and Terraform
+1.15.1. `terraform fmt -check -recursive` succeeded against the checkout before
+the result was recorded.
+
+Full rebuild used three warm-up runs followed by 10 measured runs. No-change
+incremental update used three warm-up runs followed by 30 measured runs.
+
+| Operation | Mean | Median | Range |
+| --- | ---: | ---: | ---: |
+| Full rebuild | 951.8 ms | 944.3 ms | 937.9–987.6 ms |
+| No-change incremental update | 196.4 ms | 196.3 ms | 192.8–203.4 ms |
+
+The HCL parser extracted the following top-level Terraform definitions:
+
+| Kind | Symbols |
+| --- | ---: |
+| `variable` | 1,539 |
+| `resource` | 860 |
+| `output` | 709 |
+| `module` | 152 |
+| `data` | 32 |
+| `provider` | 8 |
+| `check` | 3 |
+
+This is primarily a parser-throughput and realistic-syntax baseline. Public
+module and blueprint repositories do not necessarily have the same structure
+or change patterns as a private production infrastructure repository. Query and
+history-update measurements are deferred.

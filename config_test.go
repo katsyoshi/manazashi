@@ -8,6 +8,23 @@ import (
 	"testing"
 )
 
+func TestDetectLanguageTerraform(t *testing.T) {
+	tests := map[string]string{
+		"main.tf":                  "terraform",
+		"production.tfvars":        "terraform",
+		"generated.tf.json":        "terraform",
+		"generated.tfvars.json":    "terraform",
+		"nested/MODULE.TF":         "terraform",
+		"nested/VALUES.TFVARS":     "terraform",
+		"nested/GENERATED.TF.JSON": "terraform",
+	}
+	for path, want := range tests {
+		if got := detectLanguage(path); got != want {
+			t.Errorf("detectLanguage(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
 func TestProjectConfigResolvesDBAndBuildSettingsWithoutMergingUserConfig(t *testing.T) {
 	root := t.TempDir()
 	configPath := filepath.Join(root, projectConfigName)

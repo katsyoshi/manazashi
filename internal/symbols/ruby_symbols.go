@@ -1,269 +1,196 @@
 package symbols
 
 import (
-	"context"
-	"os/exec"
-	"regexp"
-	"strconv"
 	"strings"
-	"sync"
-	"time"
-)
 
-const rubyDumpTimeout = 5 * time.Second
-
-var (
-	rubyCommandOnce sync.Once
-	rubyCommandPath string
-	rubyCommandOK   bool
-
-	rubyPrismNodeRE  = regexp.MustCompile(`@\s+(Module|Class|Def|ConstantWrite)Node \(location: \((\d+),(\d+)\)-\((\d+),(\d+)\)\)`)
-	rubyClassNameRE  = regexp.MustCompile(`\bclass\s+([A-Z]\w*(?:::[A-Z]\w*)*)`)
-	rubyModuleNameRE = regexp.MustCompile(`\bmodule\s+([A-Z]\w*(?:::[A-Z]\w*)*)`)
-	rubyDumpNameRE   = regexp.MustCompile(`\+-- name: :(.+)$`)
-	rubyNameLocRE    = regexp.MustCompile(`\+-- name_loc: \((\d+),(\d+)\)-\((\d+),(\d+)\)`)
+	treesitter "github.com/tree-sitter/go-tree-sitter"
+	treesitterruby "github.com/tree-sitter/tree-sitter-ruby/bindings/go"
 )
 
 type rubySymbolExtractor struct{}
 
+type RubyExtractor struct {
+	parser *treesitter.Parser
+	query  *treesitter.Query
+	cursor *treesitter.QueryCursor
+}
+
+const rubySymbolQuery = `
+(class name: (_) @class.name) @class.definition
+(module name: (_) @module.name) @module.definition
+(method name: (_) @method.name) @method.definition
+(singleton_method name: (_) @singleton_method.name) @singleton_method.definition
+(assignment left: (constant) @constant.name) @constant.definition
+`
+
 func (rubySymbolExtractor) extract(path, language string, lines []string) ([]Symbol, bool) {
-	ruby, ok := rubyCommand()
-	if !ok {
+	extractor := NewRubyExtractor()
+	if extractor == nil {
 		return nil, false
 	}
-	if dump, ok := rubyDump(ruby, []string{"--parser=prism", "--dump=parsetree", "-"}, lines); ok {
-		if symbols, ok := parseRubyPrismDump(path, language, lines, dump); ok {
-			return symbols, true
-		}
+	defer extractor.Close()
+	return extractor.extract(path, language, lines)
+}
+
+func NewRubyExtractor() *RubyExtractor {
+	rubyLanguage := treesitter.NewLanguage(treesitterruby.Language())
+	parser := treesitter.NewParser()
+	if err := parser.SetLanguage(rubyLanguage); err != nil {
+		parser.Close()
+		return nil
 	}
-	return nil, false
-}
-
-func rubyDump(ruby string, args []string, lines []string) (string, bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), rubyDumpTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, ruby, args...)
-	cmd.Stdin = strings.NewReader(strings.Join(lines, "\n"))
-	out, err := cmd.Output()
-	if err != nil || ctx.Err() != nil {
-		return "", false
+	query, err := treesitter.NewQuery(rubyLanguage, rubySymbolQuery)
+	if err != nil {
+		parser.Close()
+		return nil
 	}
-	return string(out), true
+	cursor := treesitter.NewQueryCursor()
+	return &RubyExtractor{parser: parser, query: query, cursor: cursor}
 }
 
-func rubyCommand() (string, bool) {
-	rubyCommandOnce.Do(func() {
-		path, err := exec.LookPath("ruby")
-		if err != nil {
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), rubyDumpTimeout)
-		defer cancel()
-		out, err := exec.CommandContext(ctx, path, "--disable=gems", "-e", "print RUBY_VERSION").Output()
-		if err != nil || ctx.Err() != nil || !rubyVersionSupported(strings.TrimSpace(string(out))) {
-			return
-		}
-		rubyCommandPath = path
-		rubyCommandOK = true
-	})
-	return rubyCommandPath, rubyCommandOK
-}
-
-func rubyVersionSupported(version string) bool {
-	major, _, ok := strings.Cut(version, ".")
-	if !ok {
-		return false
+func (extractor *RubyExtractor) Close() {
+	if extractor == nil {
+		return
 	}
-	value, err := strconv.Atoi(major)
-	return err == nil && value >= 4
+	extractor.cursor.Close()
+	extractor.query.Close()
+	extractor.parser.Close()
 }
 
-func parseRubyPrismDump(path, language string, sourceLines []string, dump string) ([]Symbol, bool) {
-	if !strings.Contains(dump, "@ ProgramNode") {
+func ExtractWithRubyExtractor(extractor *RubyExtractor, path, language string, lines []string) []Symbol {
+	if language != "ruby" || extractor == nil {
+		return Extract(path, language, lines)
+	}
+	symbols, _ := extractor.extract(path, language, lines)
+	return symbols
+}
+
+func (extractor *RubyExtractor) extract(path, language string, lines []string) ([]Symbol, bool) {
+	source := []byte(strings.Join(lines, "\n"))
+	tree := extractor.parser.Parse(source, nil)
+	if tree == nil {
 		return nil, false
 	}
+	defer tree.Close()
+
 	var out []Symbol
-	dumpLines := strings.Split(dump, "\n")
-	for i, line := range dumpLines {
-		node, startLine, startColumn, endLine, ok := rubyDumpNode(line)
-		if !ok {
-			continue
-		}
-		switch node {
-		case "Module":
-			name, column := rubyClassOrModuleName(sourceLines, startLine, startColumn, "module")
-			if name != "" {
-				symbol := buildSymbol(path, language, "module", name, startLine, column, sourceLine(sourceLines, startLine), sourceLines)
-				symbol.EndLine = endLine
-				out = append(out, symbol)
-			}
-		case "Class":
-			name, column := rubyClassOrModuleName(sourceLines, startLine, startColumn, "class")
-			if name != "" {
-				symbol := buildSymbol(path, language, "class", name, startLine, column, sourceLine(sourceLines, startLine), sourceLines)
-				symbol.EndLine = endLine
-				out = append(out, symbol)
-			}
-		case "Def":
-			if sym, ok := rubyDefSymbol(path, language, sourceLines, dumpLines, i); ok {
-				sym.EndLine = endLine
-				out = append(out, sym)
-			}
-		case "ConstantWrite":
-			if sym, ok := rubyConstantSymbol(path, language, sourceLines, dumpLines, i); ok {
-				sym.EndLine = endLine
-				out = append(out, sym)
-			}
-		}
+	matches := extractor.cursor.Matches(extractor.query, tree.RootNode(), source)
+	for match := matches.Next(); match != nil; match = matches.Next() {
+		appendRubyMatch(match, extractor.query.CaptureNames(), path, language, source, lines, &out)
 	}
 	return out, true
 }
 
-func rubyDumpNode(line string) (string, int, int, int, bool) {
-	match := rubyPrismNodeRE.FindStringSubmatch(line)
-	if match == nil {
-		return "", 0, 0, 0, false
+func appendRubyMatch(match *treesitter.QueryMatch, captureNames []string, path, language string, source []byte, lines []string, out *[]Symbol) {
+	var definitionNode, nameNode treesitter.Node
+	definitionKind := ""
+	for _, capture := range match.Captures {
+		captureName := captureNames[capture.Index]
+		if strings.HasSuffix(captureName, ".definition") {
+			definitionNode = capture.Node
+			definitionKind = strings.TrimSuffix(captureName, ".definition")
+		} else if strings.HasSuffix(captureName, ".name") {
+			nameNode = capture.Node
+		}
 	}
-	startLine, err := strconv.Atoi(match[2])
-	if err != nil {
-		return "", 0, 0, 0, false
+	if definitionKind == "" {
+		return
 	}
-	startColumn, err := strconv.Atoi(match[3])
-	if err != nil {
-		return "", 0, 0, 0, false
-	}
-	endLine, err := strconv.Atoi(match[4])
-	if err != nil {
-		return "", 0, 0, 0, false
-	}
-	return match[1], startLine, startColumn, endLine, true
-}
 
-func rubyClassOrModuleName(lines []string, line, startColumn int, keyword string) (string, int) {
-	source := sourceLine(lines, line)
-	if startColumn > len(source) {
-		return "", 0
-	}
-	segment := source[startColumn:]
-	nameRE := rubyClassNameRE
-	if keyword == "module" {
-		nameRE = rubyModuleNameRE
-	}
-	match := nameRE.FindStringSubmatchIndex(segment)
-	if match == nil {
-		return "", 0
-	}
-	name := segment[match[2]:match[3]]
-	return name, startColumn + match[2] + 1
-}
-
-func rubyDefSymbol(path, language string, sourceLines, dumpLines []string, nodeLine int) (Symbol, bool) {
-	name, line, column, ok := rubyDumpNameAndLoc(dumpLines, nodeLine+1, 16)
-	if !ok {
-		return Symbol{}, false
-	}
-	hasReceiver := rubyDefHasReceiver(dumpLines, nodeLine+1, 16)
-	if hasReceiver {
-		name = rubyQualifiedMethodName(sourceLines, name, line, column)
-	}
-	return buildSymbol(path, language, "method", name, line, column, sourceLine(sourceLines, line), sourceLines), true
-}
-
-func rubyConstantSymbol(path, language string, sourceLines, dumpLines []string, nodeLine int) (Symbol, bool) {
-	name, line, column, ok := rubyDumpNameAndLoc(dumpLines, nodeLine+1, 8)
-	if !ok {
-		return Symbol{}, false
-	}
-	return buildSymbol(path, language, "constant", name, line, column, sourceLine(sourceLines, line), sourceLines), true
-}
-
-func rubyDumpNameAndLoc(lines []string, start, limit int) (string, int, int, bool) {
+	kind := definitionKind
 	name := ""
-	line := 0
-	column := 0
-	end := start + limit
-	if end > len(lines) {
-		end = len(lines)
+	switch definitionKind {
+	case "class", "module":
+		var ok bool
+		name, ok = rubyConstantPath(&nameNode, source)
+		if !ok {
+			return
+		}
+	case "method":
+		name = rubyMethodName(&nameNode, source)
+	case "singleton_method":
+		kind = "method"
+		name = rubySingletonMethodName(&definitionNode, &nameNode, source)
+	case "constant":
+	default:
+		return
 	}
-	for i := start; i < end; i++ {
-		if name == "" {
-			if match := rubyDumpNameRE.FindStringSubmatch(lines[i]); match != nil {
-				name = strings.TrimSpace(match[1])
+	appendRubySymbol(&definitionNode, &nameNode, kind, name, path, language, source, lines, out)
+}
+
+func appendRubySymbol(node, nameNode *treesitter.Node, kind, name, path, language string, source []byte, lines []string, out *[]Symbol) {
+	if nameNode == nil || nameNode.EndByte() > uint(len(source)) {
+		return
+	}
+	if name == "" {
+		name = string(source[nameNode.StartByte():nameNode.EndByte()])
+	}
+	if name == "" {
+		return
+	}
+	position := nameNode.StartPosition()
+	line := int(position.Row) + 1
+	symbol := buildSymbol(
+		path,
+		language,
+		kind,
+		name,
+		line,
+		int(position.Column)+1,
+		sourceLine(lines, line),
+		lines,
+	)
+	endLine := int(node.EndPosition().Row) + 1
+	if endLine < symbol.Line {
+		endLine = symbol.Line
+	}
+	symbol.EndLine = endLine
+	*out = append(*out, symbol)
+}
+
+func rubyConstantPath(node *treesitter.Node, source []byte) (string, bool) {
+	if node == nil || node.EndByte() > uint(len(source)) {
+		return "", false
+	}
+	switch node.Kind() {
+	case "constant":
+		return string(source[node.StartByte():node.EndByte()]), true
+	case "scope_resolution":
+		scope := node.ChildByFieldName("scope")
+		if scope != nil {
+			if _, ok := rubyConstantPath(scope, source); !ok {
+				return "", false
 			}
 		}
-		if line == 0 {
-			if match := rubyNameLocRE.FindStringSubmatch(lines[i]); match != nil {
-				line, _ = strconv.Atoi(match[1])
-				column, _ = strconv.Atoi(match[2])
-				column++
-			}
-		}
-		if name != "" && line > 0 {
-			return name, line, column, true
-		}
+		name := strings.TrimPrefix(string(source[node.StartByte():node.EndByte()]), "::")
+		return name, name != ""
+	default:
+		return "", false
 	}
-	return "", 0, 0, false
 }
 
-func rubyDefHasReceiver(lines []string, start, limit int) bool {
-	end := start + limit
-	if end > len(lines) {
-		end = len(lines)
+func rubyMethodName(nameNode *treesitter.Node, source []byte) string {
+	if nameNode == nil || nameNode.EndByte() > uint(len(source)) {
+		return ""
 	}
-	for i := start; i < end; i++ {
-		line := lines[i]
-		if strings.Contains(line, "+-- parameters:") {
-			return false
-		}
-		if strings.Contains(line, "+-- receiver: nil") {
-			return false
-		}
-		if strings.Contains(line, "+-- receiver:") {
-			return true
-		}
+	name := string(source[nameNode.StartByte():nameNode.EndByte()])
+	if name == "~@" {
+		return "~"
 	}
-	return false
+	return name
 }
 
-func rubyQualifiedMethodName(lines []string, name string, line, column int) string {
-	source := sourceLine(lines, line)
-	nameStart := column - 1
-	if nameStart < 0 || nameStart > len(source) {
+func rubySingletonMethodName(node, nameNode *treesitter.Node, source []byte) string {
+	name := rubyMethodName(nameNode, source)
+	if name == "" || node.StartByte() > nameNode.StartByte() || nameNode.StartByte() > uint(len(source)) {
+		return ""
+	}
+	prefix := strings.TrimSpace(string(source[node.StartByte():nameNode.StartByte()]))
+	prefix = strings.TrimSpace(strings.TrimPrefix(prefix, "def"))
+	if prefix == "" {
 		return name
 	}
-	prefix := source[:nameStart]
-	defIndex := strings.LastIndex(prefix, "def")
-	if defIndex < 0 {
-		return name
-	}
-	receiver := strings.TrimSpace(prefix[defIndex+len("def"):])
-	if receiver == "" {
-		return name
-	}
-	separator := "."
-	if strings.HasSuffix(receiver, "::") {
-		separator = "::"
-		receiver = strings.TrimSuffix(receiver, "::")
-	} else {
-		receiver = strings.TrimSuffix(receiver, ".")
-	}
-	if receiver == "" {
-		return name
-	}
-	return receiver + separator + name
-}
-
-func rubyNameColumn(lines []string, name string, line, startColumn int) int {
-	source := sourceLine(lines, line)
-	if startColumn > len(source) {
-		return 0
-	}
-	index := strings.Index(source[startColumn:], name)
-	if index < 0 {
-		return 0
-	}
-	return startColumn + index + 1
+	return prefix + name
 }
 
 func sourceLine(lines []string, line int) string {

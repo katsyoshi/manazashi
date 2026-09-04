@@ -39,10 +39,18 @@ type indexedFileState struct {
 }
 
 func scanFileIndex(root, path string, info fs.FileInfo, config buildConfig) (fileIndex, error) {
-	return scanFileIndexWithRubyBatch(root, path, info, config, nil)
+	return scanFileIndexWithExtractor(root, path, info, config, nil)
 }
 
-func scanFileIndexWithRubyBatch(root, path string, info fs.FileInfo, config buildConfig, rubyBatch *codesymbols.RubyBatch) (fileIndex, error) {
+func scanFileIndexWithRubyExtractor(root, path string, info fs.FileInfo, config buildConfig, rubyExtractor *codesymbols.RubyExtractor) (fileIndex, error) {
+	return scanFileIndexCore(root, path, info, config, nil, rubyExtractor)
+}
+
+func scanFileIndexWithExtractor(root, path string, info fs.FileInfo, config buildConfig, extractor *codesymbols.Extractor) (fileIndex, error) {
+	return scanFileIndexCore(root, path, info, config, extractor, nil)
+}
+
+func scanFileIndexCore(root, path string, info fs.FileInfo, config buildConfig, extractor *codesymbols.Extractor, rubyExtractor *codesymbols.RubyExtractor) (fileIndex, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fileIndex{}, err
@@ -71,39 +79,18 @@ func scanFileIndexWithRubyBatch(root, path string, info fs.FileInfo, config buil
 	}
 	text := decoded.text
 	lines := splitLines(text)
-	symbols := codesymbols.ExtractWithRubyBatch(rubyBatch, rel, language, lines)
+	var symbols []codesymbols.Symbol
+	if extractor != nil {
+		symbols = codesymbols.ExtractWithExtractor(extractor, rel, language, lines)
+	} else {
+		symbols = codesymbols.ExtractWithRubyExtractor(rubyExtractor, rel, language, lines)
+	}
 	metrics := computeFileMetrics(language, lines, len(symbols))
 	index.text = text
 	index.lines = lines
 	index.symbols = symbols
 	index.metrics = metrics
 	return index, nil
-}
-
-func prepareRubyBatch(root string, ignored map[string]bool, maxBytes int64, candidates map[string]bool) (*codesymbols.RubyBatch, error) {
-	files := []codesymbols.RubyBatchFile{}
-	err := walkGitTrackedFileSet(root, ignored, maxBytes, candidates, func(path string, _ fs.FileInfo) error {
-		if detectLanguage(path) != "ruby" {
-			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		files = append(files, codesymbols.RubyBatchFile{
-			Path:       filepath.ToSlash(rel),
-			SourcePath: path,
-		})
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	batch, ok := codesymbols.ExtractRubyBatch(files)
-	if !ok {
-		return nil, nil
-	}
-	return batch, nil
 }
 
 func writeFileIndexDeleteSQL(w io.Writer, path string, fts bool) {
@@ -252,6 +239,10 @@ func detectLanguage(path string) string {
 	base := filepath.Base(path)
 	if lang, ok := langByName[base]; ok {
 		return lang
+	}
+	lowerPath := strings.ToLower(path)
+	if strings.HasSuffix(lowerPath, ".tfvars") || strings.HasSuffix(lowerPath, ".tf.json") || strings.HasSuffix(lowerPath, ".tfvars.json") {
+		return "terraform"
 	}
 	return langByExt[strings.ToLower(filepath.Ext(path))]
 }

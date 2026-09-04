@@ -68,7 +68,7 @@ func lineCommentPrefixes(language string) []string {
 		return []string{"--"}
 	case "c", "cpp", "csharp", "go", "java", "javascript", "kotlin", "rust", "scala", "swift", "typescript":
 		return []string{"//"}
-	case "php":
+	case "php", "terraform":
 		return []string{"//", "#"}
 	case "dockerfile", "elixir", "make", "python", "ruby", "shell":
 		return []string{"#"}
@@ -79,7 +79,7 @@ func lineCommentPrefixes(language string) []string {
 
 func blockCommentDelimiters(language string) (string, string, bool) {
 	switch language {
-	case "c", "cpp", "csharp", "css", "go", "java", "javascript", "kotlin", "php", "rust", "scala", "swift", "typescript":
+	case "c", "cpp", "csharp", "css", "go", "java", "javascript", "kotlin", "php", "rust", "scala", "swift", "terraform", "typescript":
 		return "/*", "*/", true
 	case "haskell":
 		return "{-", "-}", true

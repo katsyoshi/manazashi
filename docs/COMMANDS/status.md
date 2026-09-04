@@ -53,6 +53,11 @@ when that comparison cannot be made.
 `status` reports a stale lock but does not remove it. Mutation/query paths
 perform stale-lock cleanup under their own rules.
 
+Use `index_stale` as a preflight signal for navigation queries. If it is true,
+run `update` for changed Git-tracked files, then inspect the live checkout for
+the final source. Untracked files and uncommitted changes are not made
+searchable by `update`; indexed query output remains a snapshot candidate.
+
 ## Examples
 
 ```sh

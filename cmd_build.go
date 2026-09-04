@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+
+	codesymbols "github.com/katsyoshi/manazashi/internal/symbols"
 )
 
 type initJSONResult struct {
@@ -403,10 +405,8 @@ func runRebuild(args []string) (resultErr error) {
 	}()
 	fts := hasFTS5()
 	ignored := cloneIgnored(options.extraIgnored)
-	rubyBatch, err := prepareRubyBatch(root, ignored, options.maxBytes, nil)
-	if err != nil {
-		return err
-	}
+	extractor := codesymbols.NewExtractor()
+	defer extractor.Close()
 	writer, wait, err := sqliteWriter(tmpDB)
 	if err != nil {
 		return err
@@ -426,7 +426,7 @@ func runRebuild(args []string) (resultErr error) {
 	nextFileID := 1
 	nextSymbolID := 1
 	err = walkGitTrackedFiles(root, ignored, options.maxBytes, func(path string, info fs.FileInfo) error {
-		index, err := scanFileIndexWithRubyBatch(root, path, info, options.config(), rubyBatch)
+		index, err := scanFileIndexWithExtractor(root, path, info, options.config(), extractor)
 		if err != nil {
 			return nil
 		}
@@ -541,10 +541,8 @@ func runUpdate(args []string) (resultErr error) {
 	}
 	candidates, candidateOnly := updateCandidatePaths(root, existing, meta)
 	ignored := cloneIgnored(options.extraIgnored)
-	rubyBatch, err := prepareRubyBatch(root, ignored, options.maxBytes, candidates)
-	if err != nil {
-		return err
-	}
+	extractor := codesymbols.NewExtractor()
+	defer extractor.Close()
 	writer, wait, err := sqliteWriter(db)
 	if err != nil {
 		return err
@@ -565,7 +563,7 @@ func runUpdate(args []string) (resultErr error) {
 	var transcodedCount, encodingSkippedCount int
 	diagnostics := []encodingDiagnostic{}
 	err = walkGitTrackedFileSet(root, ignored, options.maxBytes, candidates, func(path string, info fs.FileInfo) error {
-		index, err := scanFileIndexWithRubyBatch(root, path, info, options.config(), rubyBatch)
+		index, err := scanFileIndexWithExtractor(root, path, info, options.config(), extractor)
 		if err != nil {
 			return nil
 		}

@@ -99,6 +99,7 @@ var langByExt = map[string]string{
 	".swift": "swift",
 	".ts":    "typescript",
 	".tsx":   "typescript",
+	".tf":    "terraform",
 	".vue":   "vue",
 	".zsh":   "shell",
 }

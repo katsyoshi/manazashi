@@ -10,7 +10,7 @@ It is not intended to replace language servers, VCS indexes, or full code-intell
 
 The binary is written in Go and uses the `sqlite3` command for database creation and queries. The built binary does not require a Go runtime.
 
-The reusable agent skill source lives at `skills/manazashi/SKILL.md`. It is written to be usable by coding agents such as Codex or Claude. The skill uses its bundled `exec/mzci` by default and accepts `MANAZASHI_BIN` as an explicit override. It never searches `PATH`, so it does not accidentally run a different `mzci` binary.
+The reusable agent skill source lives at `skills/manazashi/SKILL.md`. It is written to be usable by coding agents such as Codex or Claude. The skill uses its bundled `exec/mzci` by default and accepts `MANAZASHI_EXECUTABLE` as an explicit override. It never searches `PATH`, so it does not accidentally run a different `mzci` binary.
 
 ## Agent configuration
 
@@ -45,7 +45,7 @@ against real-world repositories.
 ## Install
 
 `manazashi` requires `git`, the `sqlite3` command, Go, and a C compiler for
-installation. Rust symbol extraction embeds Tree-sitter through CGO.
+installation. Java, Ruby, and Rust symbol extraction embed Tree-sitter through CGO.
 
 ### Development environment
 
@@ -59,11 +59,9 @@ specific operating system or shell. A contributor checkout should provide:
 - standard shell utilities, including `grep`, for human-oriented source search
 
 SQLite with FTS5 enabled is recommended so the optional full-text tables and
-their tests are exercised. Ruby 4.0 or newer is optional and enables batched
-Ruby symbol extraction; older or unavailable Ruby installations use the
-fallback extractors. `iconv` is optional and enables configured legacy-encoding
-fallbacks and their tests. Tests that require an unavailable optional tool may
-skip the corresponding coverage.
+their tests are exercised. `iconv` is optional and enables configured
+legacy-encoding fallbacks and their tests. Tests that require an unavailable
+optional tool may skip the corresponding coverage.
 
 The normal verification commands are documented in `AGENTS.md`: run `gofmt`
 on edited Go files, followed by `go test ./...` and `go vet ./...`.
@@ -81,8 +79,8 @@ mkdir -p "$SKILL_DIR/exec"
 GOBIN="$SKILL_DIR/exec" go install github.com/katsyoshi/manazashi/cmd/mzci@latest
 ```
 
-The skill uses this bundled binary without requiring `MANAZASHI_BIN`. Set
-`MANAZASHI_BIN` in the agent runtime only when the skill should use a different
+The skill uses this bundled binary without requiring `MANAZASHI_EXECUTABLE`. Set
+`MANAZASHI_EXECUTABLE` in the agent runtime only when the skill should use a different
 trusted executable. The override must be an absolute path naming the executable
 directly; the skill never searches `PATH`. In sandboxed agent sessions, set
 `MANAZASHI_CACHE_DIR` to a writable location through the agent runtime rather
@@ -124,7 +122,7 @@ ln -s "$PWD/skills/manazashi" "$SKILL_DIR"
 
 If the target already exists, remove or rename it first. For other agent
 runtimes, set `SKILL_DIR` to that runtime's installed `skills/manazashi`
-directory. Configure `MANAZASHI_BIN` through the runtime only when overriding
+directory. Configure `MANAZASHI_EXECUTABLE` through the runtime only when overriding
 the bundled executable.
 
 Host-specific metadata can live under `skills/manazashi/agents/`; agents that do not use those files can ignore them.
@@ -186,6 +184,12 @@ Changing the fallback list requires a rebuild before the next update. See
 contract.
 
 `rebuild` requires a Git work tree and indexes files reported by `git ls-files`. If another `init`, `rebuild`, or `update` is already running for the same database, `rebuild` skips and exits successfully.
+
+Terraform `.tf`, `.tfvars`, `.tf.json`, and `.tfvars.json` files are classified
+as `terraform`. Native and JSON configuration expose common top-level blocks such as
+resources, data sources, modules, variables, outputs, providers, and checks to
+`defs` and `outline`; see the [Terraform support design](docs/DESIGNS/terraform.md)
+for the lightweight extraction boundary.
 
 Initialize a Git project for indexing:
 
@@ -257,7 +261,13 @@ mzci defs --root /path/to/repo parse_config
 mzci defs --root /path/to/repo --format json parse_config
 ```
 
-Use `--list` without `QUERY` to list definitions ordered by path and source position. `--kind`, `--language`, and `--limit` apply to both listing and searching. Combining `--list` with `QUERY` is an error.
+Use `--list` without `QUERY` to list definitions ordered by path and source position. `--kind`, `--language`, and `--limit` apply to both listing and searching. Combining `--list` with `QUERY` is an error. `QUERY` accepts one query per invocation; run separate queries for several symbols or use bounded `sql` for a custom search.
+
+Navigation results are candidates from an index snapshot. Check freshness with
+`status`, refresh changed Git-tracked files with `update`, and read the live
+checkout before editing or relying on source details. `update` does not index
+untracked files, and uncommitted changes can still differ from indexed
+`show` output.
 
 Show the symbols in one indexed file:
 
@@ -286,6 +296,10 @@ count. Use `outline` to inspect structure and `show` to read context around a
 selected candidate. Results remain candidates rather than a resolved call or
 reference graph.
 See [`docs/COMMANDS/refs.md`](docs/COMMANDS/refs.md) for the full contract.
+
+`NAME` accepts one identifier per invocation. When several definitions share a
+name, narrow results with `--kind`, `--language`, or `--path` before inspecting
+the live file.
 
 Find files:
 
@@ -387,7 +401,7 @@ The JSON format emits one object with a `path` field.
 
 ## Git Hooks
 
-You can refresh the local index automatically after branch checkouts and merges. These hooks are optional and only run when `MANAZASHI_BIN` points to an executable `mzci` binary. If Git runs hooks outside your shell environment, set `MANAZASHI_BIN` inside the hook or from the environment that launches Git.
+You can refresh the local index automatically after branch checkouts and merges. These hooks are optional and only run when `MANAZASHI_EXECUTABLE` points to an executable `mzci` binary. If Git runs hooks outside your shell environment, set `MANAZASHI_EXECUTABLE` inside the hook or from the environment that launches Git.
 
 Refresh the index after switching branches:
 
@@ -398,12 +412,12 @@ cat > .git/hooks/post-checkout <<'EOF'
 [ "$3" = "1" ] || exit 0
 
 root="$(git rev-parse --show-toplevel)" || exit 0
-[ -n "${MANAZASHI_BIN:-}" ] || exit 0
-[ -x "$MANAZASHI_BIN" ] || exit 0
+[ -n "${MANAZASHI_EXECUTABLE:-}" ] || exit 0
+[ -x "$MANAZASHI_EXECUTABLE" ] || exit 0
 
 (
-  "$MANAZASHI_BIN" update "$root" >/dev/null 2>&1 ||
-    "$MANAZASHI_BIN" rebuild "$root" >/dev/null 2>&1
+  "$MANAZASHI_EXECUTABLE" update "$root" >/dev/null 2>&1 ||
+    "$MANAZASHI_EXECUTABLE" rebuild "$root" >/dev/null 2>&1
 ) &
 EOF
 chmod +x .git/hooks/post-checkout
@@ -415,12 +429,12 @@ Refresh the index after pulls or merges:
 cat > .git/hooks/post-merge <<'EOF'
 #!/bin/sh
 root="$(git rev-parse --show-toplevel)" || exit 0
-[ -n "${MANAZASHI_BIN:-}" ] || exit 0
-[ -x "$MANAZASHI_BIN" ] || exit 0
+[ -n "${MANAZASHI_EXECUTABLE:-}" ] || exit 0
+[ -x "$MANAZASHI_EXECUTABLE" ] || exit 0
 
 (
-  "$MANAZASHI_BIN" update "$root" >/dev/null 2>&1 ||
-    "$MANAZASHI_BIN" rebuild "$root" >/dev/null 2>&1
+  "$MANAZASHI_EXECUTABLE" update "$root" >/dev/null 2>&1 ||
+    "$MANAZASHI_EXECUTABLE" rebuild "$root" >/dev/null 2>&1
 ) &
 EOF
 chmod +x .git/hooks/post-merge

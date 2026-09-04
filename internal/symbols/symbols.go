@@ -32,11 +32,6 @@ var symbolPatterns = map[string][]symbolSpec{
 		spec(`^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(`, "function"),
 		spec(`^\s*class\s+([A-Za-z_]\w*)\b`, "class"),
 	},
-	"ruby": {
-		spec(`^\s*def\s+((?:self\.)?[A-Za-z_]\w*[!?=]?)\b`, "method"),
-		spec(`^\s*class\s+([A-Za-z_:]\w*(?:::\w+)*)\b`, "class"),
-		spec(`^\s*module\s+([A-Za-z_:]\w*(?:::\w+)*)\b`, "module"),
-	},
 	"javascript": {
 		spec(`^\s*(?:export\s+)?(?:async\s+)?function\s+([$A-Za-z_][\w$]*)\s*\(`, "function"),
 		spec(`^\s*(?:export\s+)?(?:const|let|var)\s+([$A-Za-z_][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[$A-Za-z_][\w$]*)\s*=>`, "function"),
@@ -53,10 +48,6 @@ var symbolPatterns = map[string][]symbolSpec{
 	"go": {
 		spec(`^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\(`, "function"),
 		spec(`^\s*type\s+([A-Za-z_]\w*)\s+(?:struct|interface)\b`, "type"),
-	},
-	"java": {
-		spec(`^\s*(?:public|protected|private|abstract|final|static|\s)+class\s+([A-Za-z_]\w*)\b`, "class"),
-		spec(`^\s*(?:public|protected|private|static|final|synchronized|native|abstract|\s)+[\w<>\[\], ?]+\s+([A-Za-z_]\w*)\s*\([^;]*\)\s*\{?\s*$`, "method"),
 	},
 	"kotlin": {
 		spec(`^\s*(?:public|private|protected|internal|open|override|suspend|\s)*fun\s+([A-Za-z_]\w*)\s*\(`, "function"),
@@ -113,9 +104,11 @@ var symbolPatterns = map[string][]symbolSpec{
 }
 
 var languageSymbolExtractors = map[string]symbolExtractor{
-	"go":   goSymbolExtractor{},
-	"ruby": rubySymbolExtractor{},
-	"rust": rustSymbolExtractor{},
+	"go":        goSymbolExtractor{},
+	"java":      javaSymbolExtractor{},
+	"ruby":      rubySymbolExtractor{},
+	"rust":      rustSymbolExtractor{},
+	"terraform": terraformSymbolExtractor{},
 }
 
 var skipSymbolNames = map[string]bool{

@@ -1,9 +1,6 @@
 package symbols
 
 import (
-	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -90,144 +87,6 @@ func TestSymbolContextHandlesOutOfRangeLine(t *testing.T) {
 	}
 }
 
-func TestRegexRubySymbolsFallback(t *testing.T) {
-	source := `module Sample
-  class Worker
-    def perform!
-    end
-  end
-end
-`
-	symbols, ok := regexSymbolExtractor{}.extract("worker.rb", "ruby", splitLines(source))
-	if !ok {
-		t.Fatal("regex ruby extraction failed")
-	}
-
-	assertSymbol(t, symbols, "module", "Sample", 1)
-	assertSymbol(t, symbols, "class", "Worker", 2)
-	assertSymbol(t, symbols, "method", "perform", 3)
-}
-
-func TestRubyVersionSupported(t *testing.T) {
-	for _, test := range []struct {
-		version string
-		want    bool
-	}{
-		{version: "2.7.8", want: false},
-		{version: "3.4.6", want: false},
-		{version: "4.0.0", want: true},
-		{version: "4.1.0-preview1", want: true},
-		{version: "invalid", want: false},
-	} {
-		if got := rubyVersionSupported(test.version); got != test.want {
-			t.Errorf("rubyVersionSupported(%q) = %t, want %t", test.version, got, test.want)
-		}
-	}
-}
-
-func TestRubyBatchMatchesSingleFileExtraction(t *testing.T) {
-	source := `module Sample
-  class Worker
-    CONST = 1
-
-    def self.build
-    end
-
-    def quoter.quote(value)
-    end
-
-    def face_with_to_a.to_a
-    end
-
-    def d; end
-
-    def e; end
-
-    def perform!
-    end
-  end
-end
-`
-	path := filepath.Join(t.TempDir(), "worker.rb")
-	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	batch, ok := ExtractRubyBatch([]RubyBatchFile{{Path: "worker.rb", SourcePath: path}})
-	if !ok {
-		t.Skip("RubyVM::AbstractSyntaxTree batch extraction is unavailable")
-	}
-	lines := splitLines(source)
-	got := ExtractWithRubyBatch(batch, "worker.rb", "ruby", lines)
-	want := Extract("worker.rb", "ruby", lines)
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("batch symbols = %#v, want %#v", got, want)
-	}
-}
-
-func TestRubyBatchIgnoresQualifiedConstantWritesLikeSingleFileExtraction(t *testing.T) {
-	source := "::Sample::VALUE = 1\nself::OTHER = 2\n"
-	path := filepath.Join(t.TempDir(), "constants.rb")
-	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	batch, ok := ExtractRubyBatch([]RubyBatchFile{{Path: "constants.rb", SourcePath: path}})
-	if !ok {
-		t.Skip("RubyVM::AbstractSyntaxTree batch extraction is unavailable")
-	}
-	lines := splitLines(source)
-	got := ExtractWithRubyBatch(batch, "constants.rb", "ruby", lines)
-	want := Extract("constants.rb", "ruby", lines)
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("batch symbols = %#v, want %#v", got, want)
-	}
-}
-
-func TestParseRubyPrismDumpSymbols(t *testing.T) {
-	source := `module Sample
-  class Worker
-    CONST = 1
-
-    def self.build
-    end
-
-    def perform!
-    end
-  end
-end
-`
-	dump := `@ ProgramNode (location: (1,0)-(11,3))
-        +-- @ ModuleNode (location: (1,0)-(11,3))
-            +-- @ ClassNode (location: (2,2)-(10,5))
-                +-- @ ConstantWriteNode (location: (3,4)-(3,13))
-                |   +-- name: :CONST
-                |   +-- name_loc: (3,4)-(3,9) = "CONST"
-                +-- @ DefNode (location: (5,4)-(6,7))
-                |   +-- name: :build
-                |   +-- name_loc: (5,13)-(5,18) = "build"
-                |   +-- receiver:
-                |   |   @ SelfNode (location: (5,8)-(5,12))
-                |   +-- parameters: nil
-                +-- @ DefNode (location: (8,4)-(9,7))
-                    +-- name: :perform!
-                    +-- name_loc: (8,8)-(8,16) = "perform!"
-                    +-- receiver: nil
-                    +-- parameters: nil
-`
-	symbols, ok := parseRubyPrismDump("worker.rb", "ruby", splitLines(source), dump)
-	if !ok {
-		t.Fatal("parseRubyPrismDump failed")
-	}
-
-	assertSymbol(t, symbols, "module", "Sample", 1)
-	assertSymbol(t, symbols, "class", "Worker", 2)
-	assertSymbol(t, symbols, "constant", "CONST", 3)
-	assertSymbol(t, symbols, "method", "self.build", 5)
-	assertSymbol(t, symbols, "method", "perform!", 8)
-	assertSymbolEndLine(t, symbols, "module", "Sample", 11)
-	assertSymbolEndLine(t, symbols, "class", "Worker", 10)
-	assertSymbolEndLine(t, symbols, "method", "perform!", 9)
-}
-
 func TestExtractMacroSymbols(t *testing.T) {
 	tests := []struct {
 		language string
@@ -247,6 +106,79 @@ func TestExtractMacroSymbols(t *testing.T) {
 			assertSymbol(t, symbols, "macro", test.name, 1)
 		})
 	}
+}
+
+func TestExtractTerraformSymbols(t *testing.T) {
+	source := `terraform {
+  required_version = ">= 1.10"
+}
+
+provider "aws" {}
+variable "region" {}
+module "network" {}
+data "aws_ami" "ubuntu" {}
+resource "aws_instance" "web-server" {}
+output "instance_ip" {}
+check "health" {}
+
+locals {
+  common_tags = {}
+	text = <<-EOT
+	resource "aws_instance" "not-a-symbol" {}
+	EOT
+  resource "nested" "also-not-a-symbol" {}
+}
+`
+	symbols := Extract("main.tf", "terraform", splitLines(source))
+
+	assertSymbol(t, symbols, "provider", "aws", 5)
+	assertSymbol(t, symbols, "variable", "region", 6)
+	assertSymbol(t, symbols, "module", "network", 7)
+	assertSymbol(t, symbols, "data", "ubuntu", 8)
+	assertSymbol(t, symbols, "resource", "web-server", 9)
+	assertSymbol(t, symbols, "output", "instance_ip", 10)
+	assertSymbol(t, symbols, "check", "health", 11)
+	assertNoSymbol(t, symbols, "variable", "common_tags")
+	assertNoSymbol(t, symbols, "resource", "not-a-symbol")
+	assertNoSymbol(t, symbols, "resource", "also-not-a-symbol")
+	assertSymbolEndLine(t, symbols, "resource", "web-server", 9)
+}
+
+func TestExtractTerraformJSONSymbols(t *testing.T) {
+	source := `{
+  "variable": {
+    "region": {
+      "type": "string"
+    }
+  },
+  "resource": {
+    "aws_instance": {
+      "web": {
+        "ami": "ami-example"
+      }
+    }
+  }
+}
+`
+	symbols := Extract("generated.tf.json", "terraform", splitLines(source))
+
+	assertSymbol(t, symbols, "variable", "region", 3)
+	assertSymbolEndLine(t, symbols, "variable", "region", 5)
+	assertSymbol(t, symbols, "resource", "web", 9)
+	assertSymbolEndLine(t, symbols, "resource", "web", 11)
+}
+
+func TestExtractTerraformSymbolsRecoversAroundSyntaxErrors(t *testing.T) {
+	source := `variable "before" {}
+
+this is not valid HCL
+
+output "after" {}
+`
+	symbols := Extract("broken.tf", "terraform", splitLines(source))
+
+	assertSymbol(t, symbols, "variable", "before", 1)
+	assertSymbol(t, symbols, "output", "after", 5)
 }
 
 func assertSymbol(t *testing.T, symbols []Symbol, kind, name string, line int) {
