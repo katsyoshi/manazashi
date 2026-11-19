@@ -1,6 +1,6 @@
 # Fixture tasks for bench/context/test.sh.
 
-TASKS=(def_save long_read broken missing_read)
+TASKS=(def_save long_read broken missing_read empty_json)
 
 def_save_target=lib/a.rb
 def_save_with() {
@@ -34,4 +34,12 @@ missing_read_with() {
 }
 missing_read_without() {
   step read read_file lib/missing.rb
+}
+
+empty_json_target=lib/missing.rb
+empty_json_with() {
+  step outline mz outline lib/missing.rb
+}
+empty_json_without() {
+  step show mz show --line 1 lib/missing.rb
 }

@@ -67,6 +67,11 @@ done
 r="$(row missing_read with)"
 [ "$(cell "$r" 9)" = NG ] || fail "empty step output should be NG: $r"
 
+for c in with without; do
+  r="$(row empty_json "$c")"
+  [ "$(cell "$r" 9)" = NG ] || fail "empty JSON result should be NG: $r"
+done
+
 r="$(row def_save without)"
 [ "$(cell "$r" 5)" -lt "$(cell "$r" 6)" ] || fail "chars should be fewer than bytes: $r"
 
@@ -78,6 +83,12 @@ grep -q '^| long_read | without | read | [0-9]* | [0-9]* | 2000 |$' "$tmp/out.md
   "$here/testdata/fixture-tasks.sh" >"$tmp/rel.md" 2>/dev/null) || true
 grep -q '^| def_save | with | 2 | [1-9][0-9]* | .* | OK |$' "$tmp/rel.md" ||
   fail "relative paths should work: $(grep def_save "$tmp/rel.md")"
+
+# Without a working UTF-8 locale, characters would silently equal bytes.
+out="$(CONTEXT_BENCH_LOCALES=xx_XX.INVALID "$here/run.sh" --repo "$repo" \
+  --db "$tmp/db.sqlite" --mzci "$tmp/mzci" "$here/testdata/fixture-tasks.sh" 2>/dev/null)" &&
+  fail "missing UTF-8 locale should fail"
+[ -z "$out" ] || fail "missing UTF-8 locale should print nothing on stdout"
 
 out="$("$here/run.sh" --repo "$repo" --db /nonexistent.sqlite --mzci "$tmp/mzci" \
   "$here/testdata/fixture-tasks.sh" 2>/dev/null)" && fail "missing DB should fail"

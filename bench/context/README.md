@@ -25,8 +25,10 @@ harness against a small fixture repository.
 
 ## Procedure rules
 
-- Characters are Unicode code points (`wc -m` under `en_US.UTF-8`); bytes and
-  lines are also recorded. The ratio is with/without characters.
+- Characters are Unicode code points (`wc -m` under the first installed UTF-8
+  locale among `C.UTF-8`, `C.utf8`, `en_US.UTF-8`, and `en_US.utf8`; the script
+  fails if none counts `é` as one character). Bytes and lines are also
+  recorded. The ratio is with/without characters.
 - `mzci` runs with `--format json` and default limits, matching the manazashi
   skill.
 - A whole-file read emulates an agent Read: the first 2,000 lines with
@@ -38,7 +40,8 @@ harness against a small fixture repository.
   reports the line; it does not use a ranged read. The with condition reads a
   bounded range with `show`.
 - Command lines are used for the target check but are not measured. A step
-  with empty output fails the target check.
+  with empty output or an empty `mzci` JSON result (`[]`, `show` without
+  lines, or `refs` without definitions and candidates) fails the target check.
 
 ## Targets
 

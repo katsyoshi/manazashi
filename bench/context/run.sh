@@ -39,7 +39,20 @@ if ! "$MZCI" status --db "$DB" --format json >/dev/null 2>&1; then
   exit 1
 fi
 
-export LC_ALL=en_US.UTF-8
+# wc -m counts bytes under a non-UTF-8 locale, so pick an installed UTF-8
+# locale that counts "é" as one character, or refuse to measure.
+utf8_locale=
+for candidate in ${CONTEXT_BENCH_LOCALES:-C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8}; do
+  if [ "$(printf '\303\251' | LC_ALL="$candidate" wc -m 2>/dev/null | tr -d ' ')" = 1 ]; then
+    utf8_locale="$candidate"
+    break
+  fi
+done
+if [ -z "$utf8_locale" ]; then
+  echo "error: no UTF-8 locale available for character counts" >&2
+  exit 1
+fi
+export LC_ALL="$utf8_locale"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -59,6 +72,18 @@ step_rows=()
 cond_out=
 cond_steps=0 cond_chars=0 cond_bytes=0 cond_lines=0 cond_empty=0
 
+# empty_result FILE succeeds when a step printed nothing or an mzci JSON result
+# with no rows: [], show with no lines, or refs with no definitions or
+# candidates.
+empty_result() {
+  local body
+  body="$(tr -d '[:space:]' <"$1")"
+  case "$body" in
+    "" | "[]" | *'"found":false'* | *'"lines":[]'* | *'"definitions":[],"candidates":[]'*) return 0 ;;
+  esac
+  return 1
+}
+
 # step LABEL CMD... runs CMD in the repository and measures its stdout.
 step() {
   local label="$1"
@@ -72,7 +97,9 @@ step() {
   cat "$out" >>"$cond_out"
   printf '%s\n' "$*" >>"$cond_out.cmd"
   cond_steps=$((cond_steps + 1))
-  [ "$chars" -gt 0 ] || cond_empty=1
+  if empty_result "$out"; then
+    cond_empty=1
+  fi
   cond_chars=$((cond_chars + chars))
   cond_bytes=$((cond_bytes + bytes))
   cond_lines=$((cond_lines + lines))
@@ -97,7 +124,8 @@ for task in "${TASKS[@]}"; do
     "${task}_${cond}"
     # The command line is checked but not measured: an agent reading a file
     # knows its path from the call, not from the Read output. A step with no
-    # output is a failed lookup even when its command names the target.
+    # output or an empty JSON result is a failed lookup even when its command
+    # names the target.
     if [ "$cond_empty" -eq 0 ] && grep -qF -- "$target" "$cond_out" "$cond_out.cmd"; then
       check=OK
     else
