@@ -5,11 +5,6 @@ with target as (
   order by case when path = %s then 0 else 1 end, length(path)
   limit 1
 )
-select target.path as path,
-       symbols.line as line,
-       symbols.kind as kind,
-       symbols.name as name,
-       symbols.language as language,
-       symbols.signature as signature
+select %s
 from symbols join target on target.id = symbols.file_id
 order by symbols.line, symbols.column, symbols.name;

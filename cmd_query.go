@@ -30,6 +30,21 @@ type defsJSONRow struct {
 	Signature string  `json:"signature"`
 }
 
+type defsCompactJSONRow struct {
+	Path      string `json:"path"`
+	Line      int    `json:"line"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Signature string `json:"signature"`
+}
+
+type outlineCompactJSONRow struct {
+	Line      int    `json:"line"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Signature string `json:"signature"`
+}
+
 type filesJSONRow struct {
 	Path           string  `json:"path"`
 	Language       *string `json:"language"`
@@ -39,6 +54,10 @@ type filesJSONRow struct {
 	EncodingSource *string `json:"encoding_source"`
 	Transcoded     bool    `json:"transcoded"`
 	SkipReason     *string `json:"skip_reason"`
+}
+
+type filesCompactJSONRow struct {
+	Path string `json:"path"`
 }
 
 type filesJSONRawRow struct {
@@ -141,6 +160,39 @@ type statsJSONResult struct {
 	FTS5          *bool   `json:"fts5"`
 }
 
+// defsColumns selects the default or --details field set for defs.
+func defsColumns(details bool) string {
+	if details {
+		return "path, line, kind, name, language, signature"
+	}
+	return "path, line, kind, name, signature"
+}
+
+// outlineColumns selects the default or --details field set for outline.
+func outlineColumns(details bool) string {
+	if details {
+		return "target.path as path, symbols.line as line, symbols.kind as kind, symbols.name as name, symbols.language as language, symbols.signature as signature"
+	}
+	return "symbols.line as line, symbols.kind as kind, symbols.name as name, symbols.signature as signature"
+}
+
+// filesColumns selects the default or full field set for files.
+func filesColumns(details bool) string {
+	if details {
+		return "path, language, size, index_status, source_encoding, encoding_source, transcoded, skip_reason"
+	}
+	return "path"
+}
+
+// queryJSONRows decodes SQL rows into a non-nil slice and writes them as JSON.
+func queryJSONRows[T any](dbPath, sql string) error {
+	rows := make([]T, 0)
+	if err := sqliteJSONQuery(dbPath, sql, &rows); err != nil {
+		return err
+	}
+	return writeJSON(os.Stdout, rows)
+}
+
 func cmdDefs(args []string) error {
 	fs := flag.NewFlagSet("defs", flag.ExitOnError)
 	root := fs.String("root", "", "repository root for default database path")
@@ -150,6 +202,7 @@ func cmdDefs(args []string) error {
 	pathFilter := fs.String("path", "", "repository-relative path substring filter")
 	limit := fs.Int("limit", 50, "maximum rows")
 	list := fs.Bool("list", false, "list definitions without a query")
+	details := fs.Bool("details", false, "include all fields")
 	formatFlag := fs.String("format", "text", "output format: text or json")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -177,10 +230,10 @@ func cmdDefs(args []string) error {
 	}
 	var sql string
 	if *list {
-		sql = formatEmbeddedSQL("defs_list.sql", where, *limit)
+		sql = formatEmbeddedSQL("defs_list.sql", defsColumns(*details), where, *limit)
 	} else {
 		query := fs.Arg(0)
-		sql = formatEmbeddedSQL("defs.sql", where, quote(query), quote(query+"%"), *limit)
+		sql = formatEmbeddedSQL("defs.sql", defsColumns(*details), where, quote(query), quote(query+"%"), *limit)
 	}
 	dbPath, _, err := resolveDB(*db, *root)
 	if err != nil {
@@ -189,17 +242,17 @@ func cmdDefs(args []string) error {
 	if format == outputFormatText {
 		return runSQLitePrint(dbPath, sql)
 	}
-	rows := make([]defsJSONRow, 0)
-	if err := sqliteJSONQuery(dbPath, sql, &rows); err != nil {
-		return err
+	if *details {
+		return queryJSONRows[defsJSONRow](dbPath, sql)
 	}
-	return writeJSON(os.Stdout, rows)
+	return queryJSONRows[defsCompactJSONRow](dbPath, sql)
 }
 
 func cmdOutline(args []string) error {
 	fs := flag.NewFlagSet("outline", flag.ExitOnError)
 	root := fs.String("root", "", "repository root for default database path")
 	db := fs.String("db", "", "database path")
+	details := fs.Bool("details", false, "include all fields")
 	formatFlag := fs.String("format", "text", "output format: text or json")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -212,7 +265,7 @@ func cmdOutline(args []string) error {
 		return err
 	}
 	path := strings.TrimPrefix(filepath.ToSlash(fs.Arg(0)), "/")
-	sql := formatEmbeddedSQL("outline.sql", quote(path), quote("%/"+path), quote(path))
+	sql := formatEmbeddedSQL("outline.sql", quote(path), quote("%/"+path), quote(path), outlineColumns(*details))
 	dbPath, _, err := resolveDB(*db, *root)
 	if err != nil {
 		return err
@@ -220,11 +273,10 @@ func cmdOutline(args []string) error {
 	if format == outputFormatText {
 		return runSQLitePrint(dbPath, sql)
 	}
-	rows := make([]defsJSONRow, 0)
-	if err := sqliteJSONQuery(dbPath, sql, &rows); err != nil {
-		return err
+	if *details {
+		return queryJSONRows[defsJSONRow](dbPath, sql)
 	}
-	return writeJSON(os.Stdout, rows)
+	return queryJSONRows[outlineCompactJSONRow](dbPath, sql)
 }
 
 func cmdFiles(args []string) error {
@@ -236,6 +288,7 @@ func cmdFiles(args []string) error {
 	limit := fs.Int("limit", 100, "maximum rows")
 	list := fs.Bool("list", false, "list indexed files without a query")
 	explain := fs.Bool("explain", false, "explain an empty path result in JSON")
+	details := fs.Bool("details", false, "include all fields")
 	formatFlag := fs.String("format", "text", "output format: text or json")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -267,13 +320,19 @@ func cmdFiles(args []string) error {
 	default:
 		return fmt.Errorf("unsupported file status %q: use indexed, skipped, or all", *status)
 	}
-	sql := formatEmbeddedSQL("files.sql", where, *limit)
+	// Skipped-file listings and --explain exist to diagnose files, so they
+	// always include the decoding fields.
+	full := *details || *status != "indexed" || *explain
+	sql := formatEmbeddedSQL("files.sql", filesColumns(full), where, *limit)
 	dbPath, _, err := resolveDB(*db, *root)
 	if err != nil {
 		return err
 	}
 	if format == outputFormatText {
 		return runSQLitePrint(dbPath, sql)
+	}
+	if !full {
+		return queryJSONRows[filesCompactJSONRow](dbPath, sql)
 	}
 	rawRows := make([]filesJSONRawRow, 0)
 	if err := sqliteJSONQuery(dbPath, sql, &rawRows); err != nil {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -156,7 +157,7 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 	}
 
 	var definitions []defsJSONRow
-	decodeRunJSON(t, []string{"defs", "--db", db, "--format", "json", "main"}, &definitions)
+	decodeRunJSON(t, []string{"defs", "--db", db, "--details", "--format", "json", "main"}, &definitions)
 	if len(definitions) != 2 || definitions[0].Path != "main.go" || definitions[0].Line != 4 || definitions[0].Name != "main" || definitions[0].Language == nil || *definitions[0].Language != "go" {
 		t.Fatalf("defs JSON = %#v", definitions)
 	}
@@ -170,17 +171,17 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 	if noDefinitions == nil || len(noDefinitions) != 0 {
 		t.Fatalf("empty defs --list JSON = %#v, want []", noDefinitions)
 	}
-	defsText := captureRunOutput(t, []string{"defs", "--db", db, "--list"})
+	defsText := captureRunOutput(t, []string{"defs", "--db", db, "--list", "--details"})
 	if !strings.Contains(defsText, "path\tline\tkind\tname\tlanguage\tsignature") || !strings.Contains(defsText, "main.go\t4\tfunction\tmain") {
 		t.Fatalf("defs --list text = %q", defsText)
 	}
 
 	var outline []defsJSONRow
-	decodeRunJSON(t, []string{"outline", "--db", db, "--format", "json", "main.go"}, &outline)
+	decodeRunJSON(t, []string{"outline", "--db", db, "--details", "--format", "json", "main.go"}, &outline)
 	if len(outline) != 2 || outline[0].Path != "main.go" || outline[0].Line != 4 || outline[0].Name != "main" || outline[1].Name != "RunTask" {
 		t.Fatalf("outline JSON = %#v", outline)
 	}
-	outlineText := captureRunOutput(t, []string{"outline", "--db", db, "main.go"})
+	outlineText := captureRunOutput(t, []string{"outline", "--db", db, "--details", "main.go"})
 	if !strings.Contains(outlineText, "path\tline\tkind\tname\tlanguage\tsignature") || !strings.Contains(outlineText, "main.go\t4\tfunction\tmain") {
 		t.Fatalf("outline text = %q", outlineText)
 	}
@@ -191,7 +192,7 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 	}
 
 	var references refsJSONResult
-	decodeRunJSON(t, []string{"refs", "--db", db, "--kind", "function", "--kind", "class", "--language", "go", "--format", "json", "RunTask"}, &references)
+	decodeRunJSON(t, []string{"refs", "--db", db, "--kind", "function", "--kind", "class", "--language", "go", "--details", "--format", "json", "RunTask"}, &references)
 	if references.Query.Name != "RunTask" || !references.Query.CaseSensitive || len(references.Query.Kinds) != 2 || references.Query.Kinds[0] != "class" || references.Query.Kinds[1] != "function" {
 		t.Fatalf("refs query = %#v", references.Query)
 	}
@@ -220,13 +221,13 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 		t.Fatalf("case-sensitive refs JSON = %#v, want no matches", wrongCase)
 	}
 	var ignoredCase refsJSONResult
-	decodeRunJSON(t, []string{"refs", "--db", db, "--ignore-case", "--format", "json", "runtask"}, &ignoredCase)
+	decodeRunJSON(t, []string{"refs", "--db", db, "--ignore-case", "--details", "--format", "json", "runtask"}, &ignoredCase)
 	if ignoredCase.Query.CaseSensitive || len(ignoredCase.Definitions) != 1 || len(ignoredCase.Candidates) != 2 {
 		t.Fatalf("ignore-case refs JSON = %#v", ignoredCase)
 	}
 
 	var files []filesJSONRow
-	decodeRunJSON(t, []string{"files", "--db", db, "--format", "json", "main"}, &files)
+	decodeRunJSON(t, []string{"files", "--db", db, "--details", "--format", "json", "main"}, &files)
 	if len(files) != 1 || files[0].Path != "main.go" || files[0].Size != int64(len(content)) || files[0].Language == nil || *files[0].Language != "go" {
 		t.Fatalf("files JSON = %#v", files)
 	}
@@ -235,7 +236,7 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 	if len(listedFiles) != 1 || listedFiles[0].Path != "main.go" {
 		t.Fatalf("files --list JSON = %#v", listedFiles)
 	}
-	filesText := captureRunOutput(t, []string{"files", "--db", db, "--list"})
+	filesText := captureRunOutput(t, []string{"files", "--db", db, "--list", "--details"})
 	if !strings.Contains(filesText, "path\tlanguage\tsize") || !strings.Contains(filesText, "main.go\tgo") {
 		t.Fatalf("files --list text = %q", filesText)
 	}
@@ -360,5 +361,142 @@ func TestSQLCommandJSONOutputPreservesDynamicTypes(t *testing.T) {
 	}
 	if err := Run([]string{"sql", "--db", db, "--format", "yaml", "select 1"}); err == nil || !strings.Contains(err.Error(), "unsupported output format") {
 		t.Fatalf("sql with unsupported format error = %v", err)
+	}
+}
+
+func navigationFixtureDB(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("sqlite3"); err != nil {
+		t.Skip("sqlite3 command not found")
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git command not found")
+	}
+	root := t.TempDir()
+	content := "package main\n\n// RunTask documents the function.\nfunc main() {\n\tRunTask()\n}\n\nfunc RunTask() {}\n"
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	initGitRepo(t, root, "main.go")
+	db := filepath.Join(t.TempDir(), "index.sqlite")
+	if err := Run([]string{"rebuild", "--db", db, root}); err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
+// jsonKeys decodes a JSON array of objects and returns each object's sorted keys.
+func jsonKeys(t *testing.T, raw string) [][]string {
+	t.Helper()
+	var rows []map[string]any
+	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		t.Fatalf("JSON = %q: %v", raw, err)
+	}
+	keys := make([][]string, 0, len(rows))
+	for _, row := range rows {
+		keys = append(keys, sortedKeys(row))
+	}
+	return keys
+}
+
+func sortedKeys(row map[string]any) []string {
+	keys := make([]string, 0, len(row))
+	for key := range row {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func assertRowKeys(t *testing.T, label string, rows [][]string, want ...string) {
+	t.Helper()
+	if len(rows) == 0 {
+		t.Fatalf("%s returned no rows", label)
+	}
+	for _, keys := range rows {
+		if strings.Join(keys, ",") != strings.Join(want, ",") {
+			t.Fatalf("%s keys = %v, want %v", label, keys, want)
+		}
+	}
+}
+
+func TestNavigationOutputFields(t *testing.T) {
+	db := navigationFixtureDB(t)
+
+	assertRowKeys(t, "defs", jsonKeys(t, captureRunOutput(t, []string{"defs", "--db", db, "--format", "json", "main"})),
+		"kind", "line", "name", "path", "signature")
+	assertRowKeys(t, "defs --details", jsonKeys(t, captureRunOutput(t, []string{"defs", "--db", db, "--details", "--format", "json", "main"})),
+		"kind", "language", "line", "name", "path", "signature")
+	if out := captureRunOutput(t, []string{"defs", "--db", db, "--list", "--kind", "class", "--format", "json"}); out != "[]\n" {
+		t.Fatalf("empty defs JSON = %q, want []", out)
+	}
+	defsText := captureRunOutput(t, []string{"defs", "--db", db, "--list"})
+	if !strings.HasPrefix(defsText, "path\tline\tkind\tname\tsignature\n") || strings.Contains(defsText, "language") {
+		t.Fatalf("defs text = %q", defsText)
+	}
+	if out := captureRunOutput(t, []string{"defs", "--db", db, "--list", "--details"}); !strings.HasPrefix(out, "path\tline\tkind\tname\tlanguage\tsignature\n") {
+		t.Fatalf("defs --details text = %q", out)
+	}
+
+	assertRowKeys(t, "outline", jsonKeys(t, captureRunOutput(t, []string{"outline", "--db", db, "--format", "json", "main.go"})),
+		"kind", "line", "name", "signature")
+	assertRowKeys(t, "outline --details", jsonKeys(t, captureRunOutput(t, []string{"outline", "--db", db, "--details", "--format", "json", "main.go"})),
+		"kind", "language", "line", "name", "path", "signature")
+	if out := captureRunOutput(t, []string{"outline", "--db", db, "--format", "json", "missing.go"}); out != "[]\n" {
+		t.Fatalf("missing outline JSON = %q, want []", out)
+	}
+	if out := captureRunOutput(t, []string{"outline", "--db", db, "main.go"}); !strings.HasPrefix(out, "line\tkind\tname\tsignature\n") {
+		t.Fatalf("outline text = %q", out)
+	}
+	if out := captureRunOutput(t, []string{"outline", "--db", db, "--details", "main.go"}); !strings.HasPrefix(out, "path\tline\tkind\tname\tlanguage\tsignature\n") {
+		t.Fatalf("outline --details text = %q", out)
+	}
+
+	var refs map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(captureRunOutput(t, []string{"refs", "--db", db, "--format", "json", "RunTask"})), &refs); err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 3 || refs["query"] == nil || refs["definitions"] == nil || refs["candidates"] == nil {
+		t.Fatalf("refs JSON = %v, want query, definitions, and candidates", refs)
+	}
+	assertRowKeys(t, "refs definitions", jsonKeys(t, string(refs["definitions"])), "kind", "line", "name", "path", "signature")
+	if got, want := string(refs["candidates"]), `[{"path":"main.go","lines":[[3,"// RunTask documents the function."],[5,"RunTask()"]]}]`; got != want {
+		t.Fatalf("refs candidates = %s, want %s", got, want)
+	}
+	var detailedRefs map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(captureRunOutput(t, []string{"refs", "--db", db, "--details", "--format", "json", "RunTask"})), &detailedRefs); err != nil {
+		t.Fatal(err)
+	}
+	assertRowKeys(t, "refs --details definitions", jsonKeys(t, string(detailedRefs["definitions"])), "kind", "language", "line", "name", "path", "signature")
+	assertRowKeys(t, "refs --details candidates", jsonKeys(t, string(detailedRefs["candidates"])), "language", "line", "path", "text")
+	if !strings.Contains(string(detailedRefs["candidates"]), `"text":"\tRunTask()"`) {
+		t.Fatalf("refs --details candidates = %s, want untrimmed text", detailedRefs["candidates"])
+	}
+	if out := captureRunOutput(t, []string{"refs", "--db", db, "--format", "json", "missing"}); !strings.Contains(out, `"definitions":[]`) || !strings.Contains(out, `"candidates":[]`) {
+		t.Fatalf("empty refs JSON = %q", out)
+	}
+	if plain, detailed := captureRunOutput(t, []string{"refs", "--db", db, "RunTask"}), captureRunOutput(t, []string{"refs", "--db", db, "--details", "RunTask"}); plain != detailed {
+		t.Fatalf("refs text changed with --details:\n%s\n---\n%s", plain, detailed)
+	}
+
+	assertRowKeys(t, "files", jsonKeys(t, captureRunOutput(t, []string{"files", "--db", db, "--format", "json", "main"})), "path")
+	assertRowKeys(t, "files --details", jsonKeys(t, captureRunOutput(t, []string{"files", "--db", db, "--details", "--format", "json", "main"})),
+		"encoding_source", "language", "path", "size", "skip_reason", "source_encoding", "status", "transcoded")
+	assertRowKeys(t, "files --status all", jsonKeys(t, captureRunOutput(t, []string{"files", "--db", db, "--list", "--status", "all", "--format", "json"})),
+		"encoding_source", "language", "path", "size", "skip_reason", "source_encoding", "status", "transcoded")
+	var explained map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(captureRunOutput(t, []string{"files", "--db", db, "--explain", "--format", "json", "main"})), &explained); err != nil {
+		t.Fatal(err)
+	}
+	assertRowKeys(t, "files --explain matches", jsonKeys(t, string(explained["matches"])),
+		"encoding_source", "language", "path", "size", "skip_reason", "source_encoding", "status", "transcoded")
+	if out := captureRunOutput(t, []string{"files", "--db", db, "--format", "json", "missing"}); out != "[]\n" {
+		t.Fatalf("empty files JSON = %q, want []", out)
+	}
+	if out := captureRunOutput(t, []string{"files", "--db", db, "--list"}); out != "path\nmain.go\n" {
+		t.Fatalf("files text = %q", out)
+	}
+	if out := captureRunOutput(t, []string{"files", "--db", db, "--list", "--details"}); !strings.HasPrefix(out, "path\tlanguage\tsize") {
+		t.Fatalf("files --details text = %q", out)
 	}
 }

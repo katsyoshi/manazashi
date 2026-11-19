@@ -1,4 +1,4 @@
-select path, language, size, index_status, source_encoding, encoding_source, transcoded, skip_reason
+select %s
 from files
 where %s
 order by path

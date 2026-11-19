@@ -9,7 +9,7 @@
 ```text
 mzci defs [--root ROOT|--db DB] [--kind KIND]
                 [--language LANG] [--path QUERY] [--limit N] [--list]
-                [--format text|json] [QUERY]
+                [--details] [--format text|json] [QUERY]
 ```
 
 - Without `--list`, exactly one `QUERY` is required.
@@ -18,6 +18,7 @@ mzci defs [--root ROOT|--db DB] [--kind KIND]
 - `--path` restricts rows to repository-relative paths containing the query,
   case-insensitively.
 - `--limit` defaults to 50.
+- `--details` adds `language` to text and JSON output.
 - `--format` defaults to `text`.
 
 `QUERY` accepts one query per invocation. To search several symbols, invoke
@@ -42,7 +43,8 @@ same-named definitions, narrow the result with `--kind`, `--language`, or
 
 ## Output
 
-Text is a tabular SQLite result. JSON is an array of:
+Text is a tabular SQLite result with the same fields as JSON. JSON is an array
+of:
 
 ```json
 {
@@ -50,10 +52,12 @@ Text is a tabular SQLite result. JSON is an array of:
   "line": 42,
   "kind": "function",
   "name": "parseConfig",
-  "language": "go",
   "signature": "func parseConfig(...) ..."
 }
 ```
+
+With `--details`, each row also has `language` between `name` and
+`signature`. See [Navigation output fields](../DESIGNS/output-fields.md).
 
 `line` is numeric and one-based. `language` is string or null; the other fields
 are strings. Empty results are `[]`.

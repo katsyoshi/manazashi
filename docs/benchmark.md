@@ -113,6 +113,73 @@ already strongly explained by the number of changed files, while splitting
 dependent projections would require separate freshness tracking. Measure
 internal build phases before considering component-specific update behavior.
 
+### Rails context size
+
+Measured on 2026-11-19 (UTC) with manazashi `35f0464` against the same
+`b6cb9ea7` revision. This compares the text an agent would receive for six
+fixed navigation tasks: with manazashi (`mzci --format json`, default limits)
+and without it (`rg` or `git ls-files`, plus whole-file reads capped at 2,000
+numbered lines). Sizes are Unicode characters of each step's output; bytes
+matched characters for every task. Procedures, targets, and the rationale for
+each are in [`bench/context/README.md`](../bench/context/README.md). These are
+fixed procedures, not measurements of real agent sessions or API tokens.
+
+| Task | With | Without | With/without |
+| --- | ---: | ---: | ---: |
+| `def_body`: `ActiveRecord::Persistence#save` | 11,504 | 48,864 | 0.235 |
+| `refs`: `assert_valid_keys` | 6,185 | 4,526 | 1.367 |
+| `find_file`: `route_set` | 790 | 191 | 4.136 |
+| `outline`: `core_ext/string/inflections.rb` | 3,280 | 13,341 | 0.246 |
+| `method_in_class`: `ActionController::Metal#dispatch` | 6,233 | 11,653 | 0.535 |
+| `def_body_ambiguous`: `ActiveModel::Errors#initialize` | 9,774 | 28,092 | 0.348 |
+
+Tasks that would otherwise read a whole file shrink to 24–54% of the
+characters. Much of that difference comes from reading a bounded range with
+`show` instead of the whole file; the without condition does not use a ranged
+read even where `rg -n` already reports the line, so these ratios measure the
+default whole-file workflow, not index lookup versus text search alone. The `defs` listing accounts for most of the remaining cost: 9,614
+of 11,504 characters in `def_body` and 8,657 of 9,774 in
+`def_body_ambiguous`, both of which hit the default limit of 50 rows.
+`refs` and `files` are larger than their text-search equivalents because the
+JSON rows repeat field names and metadata that a `path:line:text` line or a
+bare path omits.
+
+The two groups have different targets. `defs`, `outline`, and `show` replace
+whole-file reads, so they are where context size can shrink. `refs` and
+`files` return every match, as `rg` and `git ls-files` do: `refs` returned 31
+candidates against 32 `rg -w` lines, so narrowing has little room. Their goal
+is parity with text search, a ratio near 1, which depends on per-row size
+rather than on the index. With `--format text` the same queries produced 3,844
+characters for `refs` and 407 for `files` at `35f0464`. Any advantage of
+`refs` from separating definitions from candidates, such as avoiding a
+follow-up read to find the definition, is outside these single-step
+measurements.
+
+#### After minimal default fields
+
+Re-measured on 2026-11-19 (UTC) after navigation commands began returning
+[minimal default fields](DESIGNS/output-fields.md), using an uncommitted
+working tree on top of `35f0464`. The tasks, index, and without condition are
+unchanged; only the with condition differs.
+
+| Task | With | Without | With/without | Before |
+| --- | ---: | ---: | ---: | ---: |
+| `def_body` | 10,604 | 48,864 | 0.217 | 0.235 |
+| `refs` | 4,190 | 4,526 | 0.926 | 1.367 |
+| `find_file` | 237 | 191 | 1.241 | 4.136 |
+| `outline` | 1,642 | 13,341 | 0.123 | 0.246 |
+| `method_in_class` | 4,025 | 11,653 | 0.345 | 0.535 |
+| `def_body_ambiguous` | 8,874 | 28,092 | 0.316 | 0.348 |
+
+`outline` and `files` changed most: dropping the repeated `path` halved
+`outline`, and `files` fell from 790 to 237 characters. `refs` drops below
+parity by grouping candidates by file as `[line, text]` pairs with trimmed
+text; dropping `language` alone had reached 5,621 characters. Candidate source
+text, 2,686 characters here, is now most of the `refs` output. `defs` still
+accounts for 8,714 of 10,604 characters in `def_body` and 7,757 of 8,874 in
+`def_body_ambiguous`, both at the default limit of 50 rows. In text format,
+`files` now produces 196 characters and `refs` is unchanged at 3,844.
+
 ## Go
 
 Measured on 2026-07-24 (UTC):
