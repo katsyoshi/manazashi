@@ -79,6 +79,12 @@ Use `defs`/`outline` for definitions, `refs` for references, `files` for paths,
 and `show` for bounded context. Use `schema`, `stats`, or `metrics` for index
 structure and counts; use `help --format json COMMAND` for exact options.
 
+Navigation output is minimal by default. `outline` rows omit the requested
+`path`, `files` rows contain only `path`, and `defs`/`refs` omit `language`.
+`refs` groups `candidates` by file, with each `lines` entry a
+`[line, trimmed text]` pair. Add `--details` only when a task needs the
+omitted fields, such as `language`, file size, or encoding metadata.
+
 Read explicitly supplied repository-relative paths from the live checkout.
 Treat a bare filename as repository-root-relative first; if absent, search for
 that basename under the repository root without broadening to content search.
