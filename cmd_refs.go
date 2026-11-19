@@ -46,6 +46,18 @@ type refsJSONResult struct {
 	Candidates  []refsCandidateJSON `json:"candidates"`
 }
 
+// refsCandidateGroupJSON holds one file's candidates as [line, text] pairs.
+type refsCandidateGroupJSON struct {
+	Path  string   `json:"path"`
+	Lines [][2]any `json:"lines"`
+}
+
+type refsCompactJSONResult struct {
+	Query       refsQueryJSON            `json:"query"`
+	Definitions []defsCompactJSONRow     `json:"definitions"`
+	Candidates  []refsCandidateGroupJSON `json:"candidates"`
+}
+
 type refsRawCandidate struct {
 	Path     string  `json:"path"`
 	Line     int     `json:"line"`
@@ -61,6 +73,7 @@ func cmdRefs(args []string) error {
 	pathFilter := fs.String("path", "", "repository-relative path substring filter")
 	ignoreCase := fs.Bool("ignore-case", false, "match identifiers without case sensitivity")
 	limit := fs.Int("limit", 100, "maximum reference candidates")
+	details := fs.Bool("details", false, "include all fields")
 	formatFlag := fs.String("format", "text", "output format: text or json")
 	var kinds stringListFlag
 	fs.Var(&kinds, "kind", "symbol kind filter; may be repeated")
@@ -85,10 +98,38 @@ func cmdRefs(args []string) error {
 		return err
 	}
 	if format == outputFormatJSON {
-		return writeJSON(os.Stdout, result)
+		if *details {
+			return writeJSON(os.Stdout, result)
+		}
+		return writeJSON(os.Stdout, compactRefsResult(result))
 	}
 	writeRefsText(result)
 	return nil
+}
+
+// compactRefsResult drops fields that are only returned with --details and
+// groups candidates by path. Candidates are already ordered by path and line.
+func compactRefsResult(result refsJSONResult) refsCompactJSONResult {
+	compact := refsCompactJSONResult{
+		Query:       result.Query,
+		Definitions: make([]defsCompactJSONRow, 0, len(result.Definitions)),
+		Candidates:  make([]refsCandidateGroupJSON, 0),
+	}
+	for _, definition := range result.Definitions {
+		compact.Definitions = append(compact.Definitions, defsCompactJSONRow{
+			Path: definition.Path, Line: definition.Line, Kind: definition.Kind,
+			Name: definition.Name, Signature: definition.Signature,
+		})
+	}
+	for _, candidate := range result.Candidates {
+		last := len(compact.Candidates) - 1
+		if last < 0 || compact.Candidates[last].Path != candidate.Path {
+			compact.Candidates = append(compact.Candidates, refsCandidateGroupJSON{Path: candidate.Path})
+			last++
+		}
+		compact.Candidates[last].Lines = append(compact.Candidates[last].Lines, [2]any{candidate.Line, strings.TrimSpace(candidate.Text)})
+	}
+	return compact
 }
 
 func loadRefsResult(db, name string, kinds []string, language, pathFilter string, caseSensitive bool, limit int) (refsJSONResult, error) {

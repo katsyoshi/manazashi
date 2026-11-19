@@ -9,7 +9,7 @@
 ```text
 mzci files [--root ROOT|--db DB] [--language LANG]
                  [--status indexed|skipped|all] [--limit N] [--explain] [--list]
-                 [--format text|json] [QUERY]
+                 [--details] [--format text|json] [QUERY]
 ```
 
 - Query mode requires one path substring; matching is case-insensitive.
@@ -17,6 +17,7 @@ mzci files [--root ROOT|--db DB] [--language LANG]
 - `--status` defaults to `indexed`.
 - `--language` is an exact filter.
 - `--limit` defaults to 100.
+- `--details` returns every field below; by default rows contain only `path`.
 
 Rows sort by path. No result is successful.
 
@@ -32,7 +33,12 @@ reported as encoding-skipped rows.
 
 ## Output
 
-Text is tabular. JSON rows contain:
+Text is tabular with the same fields as JSON. By default each row contains only
+`path`. `--details`, `--status skipped`, `--status all`, and `--explain` return
+every field, because those listings exist to explain how a file was decoded or
+why it was omitted. See [Navigation output fields](../DESIGNS/output-fields.md).
+
+The full JSON row contains:
 
 | Field | Type | Meaning |
 | --- | --- | --- |

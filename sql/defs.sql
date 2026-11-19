@@ -1,4 +1,4 @@
-select path, line, kind, name, language, signature
+select %s
 from symbols
 where %s
 order by

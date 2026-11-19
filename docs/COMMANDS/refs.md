@@ -13,7 +13,8 @@ graph.
 
 ```text
 mzci refs [--root ROOT|--db DB] [--kind KIND]... [--language LANG]
-                [--path QUERY] [--ignore-case] [--limit N] [--format text|json] NAME
+                [--path QUERY] [--ignore-case] [--limit N] [--details]
+                [--format text|json] NAME
 ```
 
 - `NAME` is required.
@@ -164,23 +165,30 @@ definitions, and candidates remain distinct.
       "line": 3,
       "kind": "class",
       "name": "List",
-      "language": "java",
       "signature": "class List {"
     }
   ],
   "candidates": [
     {
       "path": "app/models/item.java",
-      "line": 12,
-      "language": "java",
-      "text": "List<Item> items = new ArrayList<>();"
+      "lines": [[12, "List<Item> items = new ArrayList<>();"]]
     }
   ]
 }
 ```
 
+`candidates` groups lines by file. Each `lines` entry is a two-element array:
+the one-based line number, then the line text with leading and trailing
+whitespace removed, as in text output. Use `show` when indentation matters.
+
+With `--details`, definitions also include `language` (string or null), as in
+`defs --details`, and `candidates` is a flat array of
+`{"path","line","language","text"}` objects with untrimmed text. Text output never shows `language`,
+so it is the same with or without `--details`. See
+[Navigation output fields](../DESIGNS/output-fields.md).
+
 Nullable query filters use `null`. Row collections always use arrays, including
-when empty. Candidate ordering is stable by path and line. Definition ordering
+when empty. Candidate groups follow path order and lines follow line order. Definition ordering
 is stable by path, line, column, and name.
 
 When no kind filter is supplied, `query.kinds` is an empty array. An empty

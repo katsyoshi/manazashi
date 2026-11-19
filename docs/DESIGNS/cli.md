@@ -22,6 +22,9 @@ stable codes, stream behavior, and fallback classification are defined in
 Commands accept `--format text|json`; text is the default. Unsupported format
 names are errors.
 
+Navigation commands return the same minimal field set in both formats unless
+`--details` is given; see [Navigation output fields](output-fields.md).
+
 JSON output is exactly one document followed by a newline. Native JSON numbers
 and booleans are not stringified. Unknown scalar values use `null`, while
 row-set results use empty arrays rather than `null`.

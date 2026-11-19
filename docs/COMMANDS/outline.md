@@ -8,7 +8,7 @@ order.
 ## Usage
 
 ```text
-mzci outline [--root ROOT|--db DB] [--format text|json] PATH
+mzci outline [--root ROOT|--db DB] [--details] [--format text|json] PATH
 ```
 
 `PATH` is required. A leading slash is removed and separators are normalized
@@ -25,21 +25,22 @@ empty row set.
 
 ## Output
 
-Text is tabular. JSON uses the same definition object as `defs`:
+Text is tabular with the same fields as JSON. Every row belongs to the selected
+file, so `path` is omitted by default:
 
 ```json
 [
   {
-    "path": "internal/config.go",
     "line": 10,
     "kind": "type",
     "name": "Config",
-    "language": "go",
     "signature": "type Config struct {"
   }
 ]
 ```
 
+`--details` returns the full `defs` definition object, adding `path` and
+`language`. See [Navigation output fields](../DESIGNS/output-fields.md).
 `language` is nullable; empty results are `[]`.
 
 ## Examples
