@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
 import statistics
 import subprocess
 import tempfile
@@ -130,30 +129,62 @@ def update_index_file(db_path: Path, relative_path: str) -> int:
     return time.perf_counter_ns() - started
 
 
-def prototype_query(db_path: Path, name: str, limit: int) -> list[dict[str, object]]:
-    import sqlite3
+def contains_identifier(line: str, name: str) -> bool:
+    for start in range(len(line) - len(name) + 1):
+        end = start + len(name)
+        if line[start:end] != name:
+            continue
+        if start > 0 and is_identifier_char(line[start - 1]):
+            continue
+        if end < len(line) and is_identifier_char(line[end]):
+            continue
+        return True
+    return False
 
-    connection = sqlite3.connect(db_path)
-    connection.row_factory = sqlite3.Row
-    try:
-        return [
-            dict(row)
-            for row in connection.execute(
-                "select files.path as path, lines.line as line, "
-                "files.language as language, lines.text as text "
-                "from prototype_identifier_lines as identifiers "
-                "join lines on lines.file_id = identifiers.file_id "
-                "and lines.line = identifiers.line "
-                "join files on files.id = identifiers.file_id "
-                "where identifiers.name = ? and not exists ("
-                "select 1 from symbols where symbols.file_id = identifiers.file_id "
-                "and symbols.line = identifiers.line and symbols.name = ?) "
-                "order by files.path, lines.line limit ?",
-                (name, name, limit),
-            )
-        ]
-    finally:
-        connection.close()
+
+def baseline_scan_query(connection, name: str, limit: int) -> list[dict[str, object]]:
+    """Match refs' SQL substring prefilter plus Go-style exact boundary check."""
+    definition_lines = {
+        (file_id, line)
+        for file_id, line in connection.execute(
+            "select file_id, line from symbols where name = ?", (name,)
+        )
+    }
+    candidates = []
+    for row in connection.execute(
+        "select files.id as file_id, files.path as path, lines.line as line, "
+        "files.language as language, lines.text as text "
+        "from lines join files on files.id = lines.file_id "
+        "where instr(lines.text, ?) > 0 order by files.path, lines.line",
+        (name,),
+    ):
+        if (row["file_id"], row["line"]) in definition_lines:
+            continue
+        if not contains_identifier(row["text"], name):
+            continue
+        candidates.append(dict(row))
+        if len(candidates) >= limit:
+            break
+    return candidates
+
+
+def prototype_query(connection, name: str, limit: int) -> list[dict[str, object]]:
+    return [
+        dict(row)
+        for row in connection.execute(
+            "select files.id as file_id, files.path as path, lines.line as line, "
+            "files.language as language, lines.text as text "
+            "from prototype_identifier_lines as identifiers "
+            "join lines on lines.file_id = identifiers.file_id "
+            "and lines.line = identifiers.line "
+            "join files on files.id = identifiers.file_id "
+            "where identifiers.name = ? and not exists ("
+            "select 1 from symbols where symbols.file_id = identifiers.file_id "
+            "and symbols.line = identifiers.line and symbols.name = ?) "
+            "order by files.path, lines.line limit ?",
+            (name, name, limit),
+        )
+    ]
 
 
 def size(path: Path) -> int:
@@ -203,14 +234,30 @@ def main() -> int:
     ]
     current_query_ns, current_output = median_command(current_query, args.repeats)
     current_rows = json.loads(current_output)["candidates"]
-    prototype_rows = prototype_query(base_db, args.query, args.limit)
-    equivalent = candidate_keys(current_rows) == candidate_keys(prototype_rows)
+    import sqlite3
 
-    prototype_query_ns = []
-    for _ in range(args.repeats):
-        started = time.perf_counter_ns()
-        prototype_query(base_db, args.query, args.limit)
-        prototype_query_ns.append(time.perf_counter_ns() - started)
+    connection = sqlite3.connect(base_db)
+    connection.row_factory = sqlite3.Row
+    try:
+        baseline_rows = baseline_scan_query(connection, args.query, args.limit)
+        prototype_rows = prototype_query(connection, args.query, args.limit)
+        equivalent = (
+            candidate_keys(current_rows) == candidate_keys(baseline_rows)
+            and candidate_keys(baseline_rows) == candidate_keys(prototype_rows)
+        )
+
+        baseline_scan_ns = []
+        prototype_query_ns = []
+        # Warm both paths once, then alternate in the same process and connection.
+        for _ in range(args.repeats):
+            started = time.perf_counter_ns()
+            baseline_scan_query(connection, args.query, args.limit)
+            baseline_scan_ns.append(time.perf_counter_ns() - started)
+            started = time.perf_counter_ns()
+            prototype_query(connection, args.query, args.limit)
+            prototype_query_ns.append(time.perf_counter_ns() - started)
+    finally:
+        connection.close()
 
     run(["git", "clone", "--quiet", "--shared", "--no-hardlinks", str(repo), str(update_repo)])
     head = run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture=True).strip()
@@ -240,7 +287,8 @@ def main() -> int:
         "baseline": {
             "rebuild_ms": round(current_rebuild_ns / 1_000_000, 2),
             "db_bytes": base_size,
-            "refs_median_ms": round(current_query_ns / 1_000_000, 2),
+            "refs_cli_median_ms": round(current_query_ns / 1_000_000, 2),
+            "refs_in_process_scan_median_ms": round(statistics.median(baseline_scan_ns) / 1_000_000, 2),
         },
         "prototype": {
             "identifier_index_build_ms_additional": round(overlay_build_ns / 1_000_000, 2),
@@ -248,7 +296,7 @@ def main() -> int:
             "db_bytes": overlay_size,
             "db_size_delta_bytes": overlay_size - base_size,
             "db_size_delta_percent": round((overlay_size - base_size) * 100 / base_size, 2),
-            "refs_median_ms": round(statistics.median(prototype_query_ns) / 1_000_000, 2),
+            "refs_in_process_median_ms": round(statistics.median(prototype_query_ns) / 1_000_000, 2),
             "identifier_index_update_ms_additional": round(overlay_update_ns / 1_000_000, 2),
             "projected_single_file_update_ms": round((current_update_ns + overlay_update_ns) / 1_000_000, 2),
         },
@@ -264,7 +312,8 @@ def main() -> int:
             "The fixed query is case-sensitive, matching refs default behavior.",
             "The identifier table is an experimental overlay, not part of mzci's production schema.",
             "Projected times add the measured overlay construction/update time to mzci's measured operation.",
-            "The prototype query uses persistent Python sqlite3 access; refs uses mzci's CLI path, so query timing includes different process and JSON overhead.",
+            "The in-process baseline scan and prototype use the same Python process and SQLite connection; the baseline preserves refs' SQL substring prefilter and exact identifier-boundary check.",
+            "The end-to-end mzci refs CLI time is reported separately because it includes subprocess and JSON overhead absent from either in-process path.",
         ],
     }
     print(json.dumps(report, indent=2, sort_keys=True))

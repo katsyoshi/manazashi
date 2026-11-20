@@ -37,9 +37,16 @@ Use `--repeats N` to change the query timing sample count.
 - Main database file size before and after the overlay, including its index.
 - Median wall time for the current `refs` command and the indexed prototype
   query, along with whether both returned the same candidate path and line
-  pairs for the fixed workload.
+  pairs for the fixed workload. It reports both end-to-end CLI time and an
+  in-process baseline scan versus prototype query using the same Python process
+  and SQLite connection.
 - Baseline one-file `mzci update` wall time and the additional time to refresh
   the overlay rows for that file, plus their projected sum.
+
+The in-process baseline preserves the current `refs` SQL substring prefilter
+and applies the same Unicode identifier-boundary rule in Python. Its timing
+can be compared directly with the prototype timing. The CLI measurement is
+reported separately because it includes subprocess and JSON overhead.
 
 The overlay tokenizer intentionally scans all source text, so identifiers in
 comments and strings remain searchable like they are in the current `refs`
@@ -48,8 +55,26 @@ candidate lines rather than individual token positions.
 
 This is a sizing experiment, not a production implementation. The overlay is
 materialized from the completed line index, so the projected rebuild/update
-times are additive estimates. The prototype query uses Python's SQLite API,
-while `mzci refs` invokes the CLI-based query path; their wall times include
-different process and JSON overhead. Run multiple times on an otherwise idle
-machine and treat query latency as directional. The database size reports the
-main SQLite file, excluding transient sidecar files.
+times are additive estimates. Run multiple times on an otherwise idle machine.
+The database size reports the main SQLite file, excluding transient sidecar
+files.
+
+## Preliminary Rails snapshot
+
+One run on revision `b6cb9ea7657ea46eb35fdd73b9b2174f7a93a8c0` found:
+
+| Measurement | Current index | With identifier-line overlay |
+| --- | ---: | ---: |
+| Rebuild / overlay materialization | 5.02 s | +5.60 s additional |
+| Main DB size | 133,947,392 bytes | +93,859,840 bytes (+70.07%) |
+| `assert_valid_keys` query, same-process scan vs prototype | 58.00 ms | 0.16 ms |
+| End-to-end `refs assert_valid_keys` CLI | 57.56 ms | Not implemented |
+| One-file update | 81.66 ms via `mzci` | +2.57 ms overlay refresh |
+
+The 31 candidate path/line pairs matched. The in-process baseline and prototype
+use the same Python process and SQLite connection; the baseline applies the
+current substring prefilter and exact identifier-boundary check. The CLI
+measurement is separate, and the prototype is not wired into `mzci`, so the
+0.16 ms result is a query-path comparison rather than an end-to-end command
+measurement. These are one-machine directional results, not an adoption
+decision.
