@@ -113,7 +113,7 @@ func appendRubyRSpecMatch(match *treesitter.QueryMatch, captureNames []string, p
 	default:
 		return
 	}
-	if callNode == nil || descriptionNode == nil || blockNode == nil || descriptionNode.EndByte() > uint(len(source)) {
+	if callNode.Id() == 0 || descriptionNode.Id() == 0 || blockNode.Id() == 0 || descriptionNode.EndByte() > uint(len(source)) {
 		return
 	}
 
