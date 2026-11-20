@@ -75,9 +75,9 @@ they need a broader concept.
 
 ## Command responsibilities
 
-- `defs` lists or searches definition rows. Its query mode is deliberately
-  broader than exact-name matching and may match name prefixes, signatures, or
-  paths.
+- `defs` lists definition rows or finds definitions by exact name, ignoring
+  case. Prefix, signature, and path discovery belong to other commands or
+  explicit SQL queries.
 - `outline` lists stored definitions for one file in source order.
 - `refs` reports exact-identifier lexical occurrences and matching definitions;
   it does not resolve occurrences to definitions. See

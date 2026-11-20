@@ -26,10 +26,9 @@ mzci defs [--root ROOT|--db DB] [--kind KIND]
 
 ## Matching and ordering
 
-Query mode matches case-insensitively when the stored name equals the query,
-the name starts with the query, the signature contains it, or the path contains
-it. Exact-name rows sort first, then name-prefix rows, then other matches;
-ties sort by path and line.
+Query mode matches the stored symbol name exactly, ignoring case. It does not
+search prefixes, signatures, or paths. Use `files` to search paths, `refs` to
+find lexical occurrences, or `sql` for a custom bounded symbol search.
 
 List mode does not search. It sorts by path, line, column, and name.
 
