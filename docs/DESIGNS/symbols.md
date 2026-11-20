@@ -63,7 +63,7 @@ Extraction never executes the indexed source as a program.
 The shared vocabulary currently includes kinds such as:
 
 `class`, `module`, `type`, `interface`, `trait`, `enum`, `function`, `method`,
-`macro`, `constant`, and `variable`.
+`macro`, `constant`, `variable`, `test_group`, and `test_example`.
 
 A function is not owned by a receiver/type construct; a method is. A macro
 remains distinct because source expansion is not an ordinary call. Languages
@@ -79,6 +79,8 @@ they need a broader concept.
   case. Prefix, signature, and path discovery belong to other commands or
   explicit SQL queries.
 - `outline` lists stored definitions for one file in source order.
+- Ruby `_spec.rb` files may also store RSpec groups and examples for outline
+  navigation; see [RSpec outline entries](rspec-outline.md).
 - `refs` reports exact-identifier lexical occurrences and matching definitions;
   it does not resolve occurrences to definitions. See
   [`refs`](../COMMANDS/refs.md).

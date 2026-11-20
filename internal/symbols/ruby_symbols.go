@@ -21,6 +21,10 @@ const rubySymbolQuery = `
 (method name: (_) @method.name) @method.definition
 (singleton_method name: (_) @singleton_method.name) @singleton_method.definition
 (assignment left: (constant) @constant.name) @constant.definition
+(call
+  method: (_) @rspec.method
+  arguments: (argument_list . (_) @rspec.description)
+  block: (_) @rspec.block) @rspec.call
 `
 
 func (rubySymbolExtractor) extract(path, language string, lines []string) ([]Symbol, bool) {
@@ -77,8 +81,57 @@ func (extractor *RubyExtractor) extract(path, language string, lines []string) (
 	matches := extractor.cursor.Matches(extractor.query, tree.RootNode(), source)
 	for match := matches.Next(); match != nil; match = matches.Next() {
 		appendRubyMatch(match, extractor.query.CaptureNames(), path, language, source, lines, &out)
+		appendRubyRSpecMatch(match, extractor.query.CaptureNames(), path, language, source, lines, &out)
 	}
 	return out, true
+}
+
+func appendRubyRSpecMatch(match *treesitter.QueryMatch, captureNames []string, path, language string, source []byte, lines []string, out *[]Symbol) {
+	if !strings.HasSuffix(path, "_spec.rb") {
+		return
+	}
+	var callNode, descriptionNode, blockNode treesitter.Node
+	method := ""
+	for _, capture := range match.Captures {
+		switch captureNames[capture.Index] {
+		case "rspec.call":
+			callNode = capture.Node
+		case "rspec.method":
+			method = string(source[capture.Node.StartByte():capture.Node.EndByte()])
+		case "rspec.description":
+			descriptionNode = capture.Node
+		case "rspec.block":
+			blockNode = capture.Node
+		}
+	}
+	kind := ""
+	switch method {
+	case "describe", "context", "feature":
+		kind = "test_group"
+	case "it", "specify", "scenario", "example":
+		kind = "test_example"
+	default:
+		return
+	}
+	if callNode.Id() == 0 || descriptionNode.Id() == 0 || blockNode.Id() == 0 || descriptionNode.EndByte() > uint(len(source)) {
+		return
+	}
+
+	name := strings.TrimSpace(string(source[descriptionNode.StartByte():descriptionNode.EndByte()]))
+	if descriptionNode.Kind() == "string" && len(name) >= 2 {
+		name = name[1 : len(name)-1]
+	}
+	if name == "" {
+		return
+	}
+	position := callNode.StartPosition()
+	line := int(position.Row) + 1
+	symbol := buildSymbol(path, language, kind, name, line, int(position.Column)+1, sourceLine(lines, line), lines)
+	symbol.EndLine = int(blockNode.EndPosition().Row) + 1
+	if symbol.EndLine < line {
+		symbol.EndLine = line
+	}
+	*out = append(*out, symbol)
 }
 
 func appendRubyMatch(match *treesitter.QueryMatch, captureNames []string, path, language string, source []byte, lines []string, out *[]Symbol) {
