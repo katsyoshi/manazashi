@@ -217,7 +217,7 @@ func cmdDefs(args []string) error {
 	where := "1 = 1"
 	if !*list {
 		query := fs.Arg(0)
-		where = "name = " + quote(query) + " collate nocase"
+		where = "(name = " + quote(query) + " collate nocase or name like " + quote(query+"%") + " collate nocase or signature like " + quote("%"+query+"%") + " collate nocase or path like " + quote("%"+query+"%") + " collate nocase)"
 	}
 	if *kind != "" {
 		where += " and kind = " + quote(*kind)
