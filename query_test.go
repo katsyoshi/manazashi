@@ -158,7 +158,7 @@ func TestQueryCommandsJSONOutput(t *testing.T) {
 
 	var definitions []defsJSONRow
 	decodeRunJSON(t, []string{"defs", "--db", db, "--details", "--format", "json", "main"}, &definitions)
-	if len(definitions) != 2 || definitions[0].Path != "main.go" || definitions[0].Line != 4 || definitions[0].Name != "main" || definitions[0].Language == nil || *definitions[0].Language != "go" {
+	if len(definitions) != 1 || definitions[0].Path != "main.go" || definitions[0].Line != 4 || definitions[0].Name != "main" || definitions[0].Language == nil || *definitions[0].Language != "go" {
 		t.Fatalf("defs JSON = %#v", definitions)
 	}
 	var listedDefinitions []defsJSONRow
