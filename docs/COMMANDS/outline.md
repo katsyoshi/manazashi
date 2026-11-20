@@ -3,7 +3,8 @@
 ## Purpose
 
 `outline` returns stored symbol definitions for one indexed file in source
-order.
+order. Ruby `_spec.rb` files also include RSpec `test_group` and `test_example`
+rows for recognized block calls. See [RSpec outline entries](../DESIGNS/rspec-outline.md).
 
 ## Usage
 
